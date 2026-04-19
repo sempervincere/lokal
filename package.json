@@ -20,6 +20,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "next": "14.2.3",
+    "ngrok": "^5.0.0-beta.2",
     "pg": "^8.20.0",
     "prisma": "^7.7.0",
     "react": "^18.3.1",
