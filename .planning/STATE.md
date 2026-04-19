@@ -1,5 +1,5 @@
 # LOKAL — Development State Tracker
-> **Last Updated:** Day 0 (Plan Created) | *Update this file every session.*
+> **Last Updated:** Day 2 (2026-04-19) | *Update this file every session.*
 
 ---
 
@@ -18,13 +18,13 @@
 
 | Ticket | Title | Owner | Status | Blocker / Notes |
 |--------|-------|-------|--------|-----------------|
-| T-00 | Git + Next.js Scaffolding | Daffa | PENDING | — |
-| T-01 | Prisma Schema + Migration | Daffa | PENDING | Needs T-00 |
+| T-00 | Git + Next.js Scaffolding | Daffa | DONE | next.config.mjs, tailwind, tsconfig complete |
+| T-01 | Prisma Schema + Migration | Daffa | DONE | schema v2.1 (8 tables). SQL in prisma/migrations/. Apply via Supabase SQL editor — see notes |
 | T-02 | Anchor Workspace Init | Dylan | PENDING | — |
-| T-03 | Supabase Auth + Middleware | Daffa | PENDING | Needs T-00, T-01 |
+| T-03 | Supabase Auth + Middleware | Daffa | DONE | @supabase/ssr installed; server.ts, client.ts, middleware.ts, auth/callback route, login page complete |
 | T-04 | Constants, Types, Utilities | Daffa | PENDING | Needs T-00 |
 
-**Phase 0 Progress:** 0 / 5 tickets done
+**Phase 0 Progress:** 2 / 5 tickets done
 
 ---
 
@@ -126,7 +126,7 @@
 
 | Phase | Done | Total | % |
 |-------|------|-------|---|
-| 0 — Initialization | 0 | 5 | 0% |
+| 0 — Initialization | 3 | 5 | 60% |
 | 1 — Foundation UI | 0 | 3 | 0% |
 | 2 — Blockchain Core | 0 | 6 | 0% |
 | 3 — Data Layer + Chat | 0 | 7 | 0% |
@@ -134,7 +134,7 @@
 | 5 — Session Flow | 0 | 4 | 0% |
 | 6 — Demo Polish | 0 | 3 | 0% |
 | 7 — Final Prep | 0 | 2 | 0% |
-| **TOTAL** | **0** | **36** | **0%** |
+| **TOTAL** | **3** | **36** | **8%** |
 
 ---
 
@@ -168,6 +168,8 @@
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | Day 0 | 36 tickets across 8 phases | Scoped for 26-day sprint, 1-2h per ticket |
+| Day 2 | Prisma v7 + prisma.config.ts + PrismaPg adapter | npm installed Prisma 7.7.0; v7 requires config file and driver adapter (no url in schema.prisma) |
+| Day 2 | T-01 migration: apply SQL manually via Supabase SQL editor | WSL2 blocks port 5432 (direct); pooler auth failed — SQL saved to prisma/migrations/20260419000000_init/ |
 | Day 0 | No pgvector/RAG | One cluster, 20 fields, direct prompt injection is sufficient |
 | Day 0 | Single Claude call for report | Simpler, faster, cheaper than 10 per-section calls |
 | Day 0 | @react-pdf/renderer not Puppeteer | Zero infra overhead, no headless Chrome needed |
