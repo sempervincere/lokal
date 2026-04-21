@@ -1,24 +1,10 @@
-'use client';
+// LOKAL — Landing Page
+const { useState, useEffect, useRef } = React;
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { MapPin, MessageCircle, FileText, ShieldCheck, Clock, ArrowRight, Check } from 'lucide-react';
-import { T, CLUSTERS } from '@/lib/constants/mock-data';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { ConfidenceRing } from '@/components/ui/ConfidenceRing';
-import { MapPlaceholder } from '@/components/ui/MapPlaceholder';
-
-export default function LandingPage() {
+function LandingPage({ onLogin, lang, setLang }) {
+  const L = LANG[lang];
   const [scrolled, setScrolled] = useState(false);
   const [vis, setVis] = useState(false);
-  const [cityFilter, setCityFilter] = useState('Semua Kota');
-
-  const cities = ['Semua Kota', 'Depok', 'Jakarta Selatan', 'Tangerang Selatan', 'Surabaya'];
-
-  const filteredClusters = CLUSTERS.filter(c =>
-    cityFilter === 'Semua Kota' || c.city === cityFilter
-  );
 
   useEffect(() => {
     setTimeout(() => setVis(true), 100);
@@ -27,18 +13,22 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const scrollTo = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const cities = lang === 'id'
+    ? ['Semua Kota', 'Depok', 'Jakarta Selatan', 'Tangerang Selatan', 'Surabaya']
+    : ['All Cities', 'Depok', 'South Jakarta', 'South Tangerang', 'Surabaya'];
+  const [cityFilter, setCityFilter] = useState(cities[0]);
+
+  const filtered = CLUSTERS.filter(c =>
+    cityFilter === cities[0] || c.city === ['Depok','Jakarta Selatan','Tangerang Selatan','Surabaya'][cities.indexOf(cityFilter)-1]
+  );
 
   return (
-    <div style={{ fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif", background: T.c50, color: T.g900, minHeight: '100vh' }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", background: T.c50, color: T.g900, minHeight: '100vh' }}>
 
-      {/* FLOATING NAV */}
-      <nav style={{
+      {/* ── FLOATING NAV ── */}
+      <div style={{
         position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 100, display: 'flex', alignItems: 'center',
+        zIndex: 100, display: 'flex', alignItems: 'center', gap: 0,
         background: scrolled ? 'rgba(253,251,247,0.92)' : 'rgba(253,251,247,0.75)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         border: `1px solid ${scrolled ? T.c200 : 'rgba(245,241,236,0.6)'}`,
@@ -47,74 +37,86 @@ export default function LandingPage() {
         transition: 'all 300ms ease',
         width: 'min(860px, calc(100vw - 40px))',
       }}>
-        <Image src="/logo.png" alt="LOKAL" width={90} height={30} style={{ objectFit: 'contain', marginRight: 24 }} />
+        <img src="uploads/Logo-LOKAL-AI-remove.png" alt="LOKAL" style={{ height: 30, objectFit: 'contain', marginRight: 24 }} />
         <div style={{ display: 'flex', gap: 4, flex: 1 }}>
           {[
-            { label: 'Jelajahi', id: 'section-clusters' },
-            { label: 'Cara Kerja', id: 'section-how' },
-            { label: 'Harga', id: 'section-pricing' },
+            { label: L.nav.browse, id: 'section-clusters' },
+            { label: L.nav.how, id: 'section-how' },
+            { label: L.nav.pricing, id: 'section-pricing' },
           ].map(item => (
-            <NavLink key={item.id} onClick={() => scrollTo(item.id)}>{item.label}</NavLink>
+            <button key={item.id} onClick={() => {
+              const el = document.getElementById(item.id);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }} style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '7px 14px',
+              borderRadius: 9999, fontSize: 14, fontWeight: 500, color: T.g700,
+              fontFamily: 'inherit', transition: 'all 150ms',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = T.c200}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+            >{item.label}</button>
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <a href="/login" style={{ padding: '8px 16px', fontSize: 14, fontWeight: 600, color: T.g700, textDecoration: 'none' }}>
-            Masuk
-          </a>
-          <Button onClick={() => { window.location.href = '/login'; }}>Mulai Gratis</Button>
+          <button onClick={() => setLang(lang === 'id' ? 'en' : 'id')} style={{
+            background: T.c200, border: 'none', cursor: 'pointer', padding: '6px 12px',
+            borderRadius: 9999, fontSize: 12, fontWeight: 700, color: T.g700,
+            fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <Icon name="Globe" size={13} color={T.g500} /> {lang.toUpperCase()}
+          </button>
+          <button onClick={onLogin} style={{
+            background: 'none', border: 'none', cursor: 'pointer', padding: '8px 16px',
+            fontSize: 14, fontWeight: 600, color: T.g700, fontFamily: 'inherit',
+          }}>{L.nav.login}</button>
+          <Btn onClick={onLogin}>{L.nav.cta}</Btn>
         </div>
-      </nav>
+      </div>
 
-      {/* HERO */}
+      {/* ── HERO ── */}
       <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '120px 5% 80px', maxWidth: 1200, margin: '0 auto', gap: 60, position: 'relative' }}>
+        {/* Subtle animated background */}
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: '10%', left: '5%', width: 480, height: 480, borderRadius: '50%', background: `radial-gradient(circle, ${T.p100} 0%, transparent 70%)`, opacity: 0.7, animation: 'heroPulse 8s ease-in-out infinite' }} />
           <div style={{ position: 'absolute', bottom: '15%', right: '8%', width: 360, height: 360, borderRadius: '50%', background: `radial-gradient(circle, ${T.e100} 0%, transparent 70%)`, opacity: 0.6, animation: 'heroPulse 10s ease-in-out 2s infinite' }} />
-          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.035 }}>
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.035 }} xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="herogrid" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
-                <path d="M 48 0 L 0 0 0 48" fill="none" stroke={T.g900} strokeWidth="0.8" />
+                <path d="M 48 0 L 0 0 0 48" fill="none" stroke={T.g900} strokeWidth="0.8"/>
               </pattern>
             </defs>
-            <rect width="100%" height="100%" fill="url(#herogrid)" />
+            <rect width="100%" height="100%" fill="url(#herogrid)"/>
           </svg>
         </div>
-
-        {/* Left content */}
         <div style={{ flex: '0 0 52%', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(24px)', transition: 'all 600ms ease', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: T.p100, border: `1px solid ${T.p400}30`, borderRadius: 9999, padding: '5px 14px', marginBottom: 28 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.p600 }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: T.p600, letterSpacing: '0.02em' }}>Platform Intelijen F&B Hyperlokal Indonesia</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: T.p600, letterSpacing: '0.02em' }}>{L.hero.badge}</span>
           </div>
           <h1 style={{ fontSize: 'clamp(48px, 5.5vw, 76px)', fontWeight: 700, lineHeight: 1.08, letterSpacing: '-0.03em', margin: '0 0 24px', color: T.g900 }}>
-            Simulate<br />
-            <span style={{ color: T.p600, fontStyle: 'italic' }}>before you</span><br />
-            operate.
+            {L.hero.h1a}<br />
+            <span style={{ color: T.p600, fontStyle: 'italic' }}>{L.hero.h1b}</span><br />
+            {L.hero.h1c}
           </h1>
-          <p style={{ fontSize: 18, color: T.g500, lineHeight: 1.7, margin: '0 0 36px', maxWidth: '46ch' }}>
-            Validasi konsep F&B kamu terhadap data pasar hyperlokal terverifikasi — sebelum tanda tangan kontrak sewa.
-          </p>
+          <p style={{ fontSize: 18, color: T.g500, lineHeight: 1.7, margin: '0 0 36px', maxWidth: '46ch' }}>{L.hero.sub}</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Button size="lg" onClick={() => { window.location.href = '/login'; }} icon={<MapPin size={18} color={T.c50} />}>
-              Jelajahi Cluster
-            </Button>
-            <Button size="lg" variant="secondary" onClick={() => scrollTo('section-how')}>
-              Lihat Demo →
-            </Button>
+            <Btn size="lg" onClick={onLogin} icon={<Icon name="MapPin" size={18} color={T.c50} />}>{L.hero.cta1}</Btn>
+            <Btn size="lg" variant="secondary" onClick={() => { const el = document.getElementById('section-how'); if(el) el.scrollIntoView({behavior:'smooth'}); }}>{L.hero.cta2} →</Btn>
           </div>
           <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ display: 'flex' }}>
-              {['#1B7A65', '#C17A5F', '#5B8BA0', '#D4A03D'].map((c, i) => (
+              {['#1B7A65','#C17A5F','#5B8BA0','#D4A03D'].map((c,i) => (
                 <div key={i} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: '2px solid white', marginLeft: i > 0 ? -8 : 0 }} />
               ))}
             </div>
-            <span style={{ fontSize: 13, color: T.g500 }}>Sudah dipercaya oleh 200+ calon pengusaha F&B</span>
+            <span style={{ fontSize: 13, color: T.g500 }}>{L.hero.proof}</span>
           </div>
         </div>
 
-        {/* Right — cluster card visual */}
+        {/* Hero visual */}
         <div style={{ flex: 1, opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(32px)', transition: 'all 700ms ease 150ms', position: 'relative', zIndex: 1 }}>
           <div style={{ position: 'relative' }}>
+            {/* Main cluster card */}
             <div style={{ background: T.c100, borderRadius: 20, border: `1px solid ${T.c200}`, overflow: 'hidden', boxShadow: '0 16px 48px rgba(26,26,26,0.10)' }}>
               <MapPlaceholder accent="#E6F3EF" color={T.p400} height={160} />
               <div style={{ padding: '20px 22px 22px' }}>
@@ -123,12 +125,12 @@ export default function LandingPage() {
                     <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>Jalan Margonda</div>
                     <div style={{ fontSize: 13, color: T.g500, marginTop: 2 }}>UI Gate — Margo City · Depok</div>
                   </div>
-                  <ConfidenceRing score={87} />
+                  <ConfRing score={87} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                  <Badge variant="active"><ShieldCheck size={10} color={T.p600} /> Active</Badge>
-                  <Badge variant="dark"><ShieldCheck size={10} color={T.c50} /> 34 titik data</Badge>
-                  <Badge variant="neutral"><Clock size={10} color={T.g500} /> 23j lalu</Badge>
+                  <Badge variant="active"><Icon name="ShieldCheck" size={10} color={T.p600} /> Active</Badge>
+                  <Badge variant="dark"><Icon name="ShieldCheck" size={10} color={T.c50} /> 34 titik data</Badge>
+                  <Badge variant="neutral"><Icon name="Clock" size={10} color={T.g500} /> 23j lalu</Badge>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
                   {[
@@ -143,13 +145,17 @@ export default function LandingPage() {
                     </div>
                   ))}
                 </div>
-                <Button full onClick={() => { window.location.href = '/login'; }} icon={<MessageCircle size={15} color={T.c50} />}>
-                  Chat Gratis 7 Pesan
-                </Button>
+                <Btn full onClick={onLogin} icon={<Icon name="MessageCircle" size={15} color={T.c50} />}>
+                  {lang === 'id' ? 'Chat Gratis 7 Pesan' : '7 Free Chat Messages'}
+                </Btn>
               </div>
             </div>
-            {/* Floating score badge */}
-            <div style={{ position: 'absolute', top: -16, right: -16, background: T.g900, borderRadius: 14, padding: '10px 16px', boxShadow: '0 8px 24px rgba(26,26,26,0.2)' }}>
+            {/* Floating badge */}
+            <div style={{
+              position: 'absolute', top: -16, right: -16,
+              background: T.g900, borderRadius: 14, padding: '10px 16px',
+              boxShadow: '0 8px 24px rgba(26,26,26,0.2)',
+            }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Confidence Score</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: T.c50, letterSpacing: '-0.02em' }}>87<span style={{ fontSize: 12, opacity: 0.6 }}>/100</span></div>
             </div>
@@ -157,21 +163,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PROBLEM */}
+      {/* ── PROBLEM ── */}
       <section style={{ background: T.g900, padding: '80px 5%' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.p400, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>Mengapa LOKAL Ada</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.p400, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 20 }}>{L.problem.label}</div>
           <blockquote style={{ fontSize: 'clamp(18px,2.2vw,26px)', color: 'rgba(253,251,247,0.9)', lineHeight: 1.6, fontStyle: 'italic', maxWidth: '70ch', margin: '0 0 12px', fontWeight: 400 }}>
-            &ldquo;Paman saya buka café matcha premium di Depok dengan harga Rp 50.000 — sama dengan Jakarta. Tutup dalam beberapa bulan. Price ceiling Depok adalah Rp 28.000. Tidak ada yang memberitahunya.&rdquo;
+            {L.problem.quote}
           </blockquote>
-          <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.4)', marginBottom: 60 }}>— Kisah yang mendirikan LOKAL</div>
+          <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.4)', marginBottom: 60 }}>{L.problem.source}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 24 }}>
-            {[
-              { val: '60–90%', label: 'bisnis F&B gagal di tahun pertama' },
-              { val: '4.85 juta', label: 'UMKM F&B beroperasi di Indonesia' },
-              { val: 'Rp 1.25jt', label: 'per jam biaya konsultan F&B' },
-              { val: 'Rp 400K', label: 'satu sesi simulasi LOKAL' },
-            ].map((s, i) => (
+            {L.problem.stats.map((s, i) => (
               <div key={i} style={{ borderTop: `2px solid ${i === 3 ? T.p600 : 'rgba(255,255,255,0.12)'}`, paddingTop: 20 }}>
                 <div style={{ fontSize: 'clamp(22px,2.5vw,32px)', fontWeight: 700, color: i === 3 ? T.p400 : T.c50, letterSpacing: '-0.02em', marginBottom: 6, fontVariantNumeric: 'tabular-nums' }}>{s.val}</div>
                 <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.5)', lineHeight: 1.5 }}>{s.label}</div>
@@ -181,22 +182,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
+      {/* ── HOW IT WORKS ── */}
       <section id="section-how" style={{ padding: '80px 5%', maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>Cara Kerja</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>{L.how.label}</div>
         <h2 style={{ fontSize: 'clamp(28px,3vw,42px)', fontWeight: 700, color: T.g900, letterSpacing: '-0.02em', margin: '0 0 52px' }}>
-          Tiga langkah<br />menuju keputusan yang tepat.
+          {lang === 'id' ? 'Tiga langkah\nmenuju keputusan yang tepat.' : 'Three steps to\na confident decision.'}
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 32 }}>
-          {[
-            { n: '01', icon: <MapPin size={22} color={T.p600} />, t: 'Pilih Cluster', d: 'Temukan koridor 1.5km yang relevan dengan lokasi target kamu dari daftar cluster terverifikasi.' },
-            { n: '02', icon: <MessageCircle size={22} color={T.p600} />, t: 'Chat Gratis 7 Pesan', d: 'Tanya langsung ke AI konsultan tentang harga, kompetitor, dan perilaku pasar lokal. Gratis.' },
-            { n: '03', icon: <FileText size={22} color={T.p600} />, t: 'Buka Laporan Lengkap', d: 'Bayar Rp 400K untuk simulasi 10-seksi + jendela konsultasi AI 12 jam.' },
-          ].map((s, i) => (
+          {L.how.steps.map((s, i) => (
             <div key={i} style={{ position: 'relative' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: T.p400, letterSpacing: '0.06em', marginBottom: 20 }}>{s.n}</div>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                {s.icon}
+                <Icon name={['MapPin','MessageCircle','FileText'][i]} size={22} color={T.p600} />
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 700, color: T.g900, margin: '0 0 10px' }}>{s.t}</h3>
               <p style={{ fontSize: 15, color: T.g500, lineHeight: 1.65, margin: 0 }}>{s.d}</p>
@@ -206,12 +203,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CLUSTER PREVIEW */}
+      {/* ── CLUSTER PREVIEW ── */}
       <section id="section-clusters" style={{ padding: '20px 5% 80px', maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Cluster Aktif</div>
-            <h2 style={{ fontSize: 'clamp(24px,2.5vw,36px)', fontWeight: 700, color: T.g900, letterSpacing: '-0.02em', margin: 0 }}>Data lapangan terverifikasi, diperbarui tiap kuartal.</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{L.clusters.label}</div>
+            <h2 style={{ fontSize: 'clamp(24px,2.5vw,36px)', fontWeight: 700, color: T.g900, letterSpacing: '-0.02em', margin: 0 }}>{L.clusters.sub}</h2>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {cities.map(c => (
@@ -225,28 +222,24 @@ export default function LandingPage() {
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
-          {filteredClusters.map((c, i) => <LandingClusterCard key={c.id} cluster={c} delay={i * 80} />)}
+          {CLUSTERS.map((c, i) => <LandingClusterCard key={c.id} cluster={c} onChat={onLogin} lang={lang} delay={i * 80} />)}
         </div>
         <div style={{ textAlign: 'center', marginTop: 36 }}>
-          <Button variant="secondary" onClick={() => { window.location.href = '/login'; }} icon={<ArrowRight size={15} color={T.p600} />}>
-            Lihat Semua Cluster
-          </Button>
+          <Btn variant="secondary" onClick={onLogin} icon={<Icon name="ArrowRight" size={15} color={T.p600} />}>
+            {lang === 'id' ? 'Lihat Semua Cluster' : 'View All Clusters'}
+          </Btn>
         </div>
       </section>
 
-      {/* PRICING */}
+      {/* ── PRICING ── */}
       <section id="section-pricing" style={{ padding: '80px 5%', background: T.c100 }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>Harga Transparan</div>
-            <h2 style={{ fontSize: 'clamp(26px,3vw,40px)', fontWeight: 700, color: T.g900, letterSpacing: '-0.02em', margin: 0 }}>Mulai gratis. Bayar hanya saat kamu siap simulasi.</h2>
+            <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>{L.pricing.label}</div>
+            <h2 style={{ fontSize: 'clamp(26px,3vw,40px)', fontWeight: 700, color: T.g900, letterSpacing: '-0.02em', margin: 0 }}>{L.pricing.sub}</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
-            {[
-              { name: 'Free', price: 'Rp 0', period: '', desc: '7 pesan gratis per cluster', features: ['7 pesan AI per cluster', 'Preview data cluster', 'Tanpa kartu kredit'], cta: 'Mulai Sekarang', highlight: false },
-              { name: 'Pay-per-use', price: 'Rp 400K', period: '/sesi', desc: 'Untuk satu konsep di satu cluster', features: ['Laporan simulasi 10 seksi', 'Analisis harga per menu', 'Jendela konsultasi AI 12 jam', 'Unduh PDF laporan'], cta: 'Beli Sesi', highlight: true },
-              { name: 'Explorer', price: 'Rp 1.2jt', period: '/bulan', desc: '4 sesi/bulan, bisa rollover', features: ['4 kredit/bulan', 'Rollover max 2 sesi', 'Semua fitur Pay-per-use', 'Prioritas support'], cta: 'Pilih Explorer', highlight: false },
-            ].map((p, i) => (
+            {L.pricing.plans.map((p, i) => (
               <div key={i} style={{
                 background: p.highlight ? T.g900 : T.c50,
                 borderRadius: 20, padding: '28px 26px',
@@ -264,83 +257,61 @@ export default function LandingPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 24 }}>
                   {p.features.map((f, j) => (
                     <div key={j} style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Check size={10} color={T.p600} />
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', background: p.highlight ? T.p100 : T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name="Check" size={10} color={T.p600} />
                       </div>
                       <span style={{ fontSize: 13, color: p.highlight ? 'rgba(253,251,247,0.8)' : T.g700 }}>{f}</span>
                     </div>
                   ))}
                 </div>
-                <Button variant={p.highlight ? 'primary' : 'secondary'} full onClick={() => { window.location.href = '/login'; }}>{p.cta}</Button>
+                <Btn variant={p.highlight ? 'primary' : 'secondary'} full onClick={onLogin}>{p.cta}</Btn>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ── FOOTER ── */}
       <footer style={{ padding: '48px 5%', background: T.g900 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32, flexWrap: 'wrap' }}>
           <div>
-            <Image src="/logo.png" alt="LOKAL" width={90} height={30} style={{ objectFit: 'contain', marginBottom: 12, filter: 'brightness(0) invert(1)' }} />
-            <p style={{ fontSize: 13, color: 'rgba(253,251,247,0.4)', maxWidth: '40ch', lineHeight: 1.6, margin: 0 }}>
-              Platform intelijen F&B hyperlokal pertama di Indonesia, ditenagai data lapangan terverifikasi dan Solana blockchain.
-            </p>
+            <img src="uploads/Logo-LOKAL-AI-remove.png" alt="LOKAL" style={{ height: 32, objectFit: 'contain', marginBottom: 12, filter: 'brightness(0) invert(1)' }} />
+            <p style={{ fontSize: 13, color: 'rgba(253,251,247,0.4)', maxWidth: '40ch', lineHeight: 1.6, margin: 0 }}>{L.footer.desc}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Badge variant="dark" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
-              <ShieldCheck size={11} color="rgba(255,255,255,0.6)" /> Powered by Solana
+              <Icon name="ShieldCheck" size={11} color="rgba(255,255,255,0.6)" /> Powered by Solana
             </Badge>
             <Badge variant="dark" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
               ZK Verified Data
             </Badge>
           </div>
         </div>
-        <div style={{ maxWidth: 1200, margin: '24px auto 0', paddingTop: 24, borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 12, color: 'rgba(253,251,247,0.25)' }}>
-          © 2025 LOKAL AI · Powered by Solana · Superteam Indonesia — Frontier Colosseum 2025
-        </div>
       </footer>
     </div>
   );
 }
 
-function NavLink({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button onClick={onClick} style={{
-      background: hov ? T.c200 : 'none', border: 'none', cursor: 'pointer',
-      padding: '7px 14px', borderRadius: 9999, fontSize: 14, fontWeight: 500,
-      color: T.g700, fontFamily: 'inherit', transition: 'all 150ms',
-    }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
-      {children}
-    </button>
-  );
-}
-
-function LandingClusterCard({ cluster: c, delay }: { cluster: typeof CLUSTERS[0]; delay: number }) {
+function LandingClusterCard({ cluster: c, onChat, lang, delay }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
-
+  useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, []);
+  const L = LANG[lang];
   return (
-    <div
-      onClick={() => { window.location.href = '/login'; }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+    <div onClick={onChat} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         background: T.c50, borderRadius: 18, border: `1px solid ${T.c200}`, overflow: 'hidden', cursor: 'pointer',
         opacity: vis ? 1 : 0, transform: vis ? (hov ? 'translateY(-3px)' : 'none') : 'translateY(12px)',
         transition: `opacity 350ms ease ${delay}ms, transform 250ms ease, box-shadow 250ms ease`,
         boxShadow: hov ? '0 12px 32px rgba(26,26,26,0.10)' : '0 2px 8px rgba(26,26,26,0.04)',
-      }}
-    >
+      }}>
       <div style={{ position: 'relative' }}>
         <MapPlaceholder accent={c.accent} color={c.iconColor} height={130} />
         <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 6 }}>
           <Badge variant={c.status === 'Active' ? 'active' : 'seeding'}>{c.status}</Badge>
         </div>
         <div style={{ position: 'absolute', top: 12, right: 12 }}>
-          <ConfidenceRing score={c.confidence} size={40} />
+          <ConfRing score={c.confidence} size={40} />
         </div>
       </div>
       <div style={{ padding: '16px 18px 18px' }}>
@@ -348,10 +319,10 @@ function LandingClusterCard({ cluster: c, delay }: { cluster: typeof CLUSTERS[0]
         <div style={{ fontSize: 12, color: T.g500, marginBottom: 12 }}>{c.subtitle} · {c.neighborhood}</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
           {[
-            { l: 'Price Ceiling', v: `Rp ${(c.keyStats.priceCeiling / 1000).toFixed(0)}K` },
-            { l: 'ZK Data Points', v: `${c.zkPoints} titik` },
-            { l: 'Traffic', v: c.traffic },
-            { l: 'Diperbarui', v: `${c.freshness}j lalu` },
+            { l: lang === 'id' ? 'Price Ceiling' : 'Price Ceiling', v: `Rp ${(c.keyStats.priceCeiling / 1000).toFixed(0)}K` },
+            { l: lang === 'id' ? 'ZK Data Points' : 'ZK Data Points', v: `${c.zkPoints} titik` },
+            { l: lang === 'id' ? 'Traffic' : 'Traffic', v: c.traffic },
+            { l: lang === 'id' ? 'Diperbarui' : 'Updated', v: `${c.freshness}j lalu` },
           ].map(s => (
             <div key={s.l} style={{ background: T.c100, borderRadius: 8, padding: '8px 10px' }}>
               <div style={{ fontSize: 10, color: T.g500, fontWeight: 600 }}>{s.l}</div>
@@ -362,10 +333,10 @@ function LandingClusterCard({ cluster: c, delay }: { cluster: typeof CLUSTERS[0]
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
           {c.categories.slice(0, 3).map(cat => <Badge key={cat} variant="neutral" style={{ fontSize: 10 }}>{cat}</Badge>)}
         </div>
-        <Button full size="sm" onClick={(e?: any) => { e?.stopPropagation(); window.location.href = '/login'; }} icon={<MessageCircle size={14} color={T.c50} />}>
-          Chat Gratis
-        </Button>
+        <Btn full size="sm" onClick={onChat} icon={<Icon name="MessageCircle" size={14} color={T.c50} />}>{L.clusters.chat}</Btn>
       </div>
     </div>
   );
 }
+
+Object.assign(window, { LandingPage });

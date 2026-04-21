@@ -32,8 +32,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect /(auth) and /admin routes
-  if (!user && (pathname.startsWith("/session") || pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
+  // Protect /(auth), /(co), and /admin routes
+  if (!user && (pathname.startsWith("/session") || pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/co"))) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("redirectTo", pathname);

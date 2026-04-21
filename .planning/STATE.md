@@ -1,5 +1,6 @@
 # LOKAL — Development State Tracker
 > **Last Updated:** Day 2 (2026-04-19) | *Update this file every session.*
+> **Session Note:** Full frontend implementation done — landing, auth, BO dashboard (full flow), CO dashboard (full flow). Build passes clean.
 
 ---
 
@@ -22,9 +23,9 @@
 | T-01 | Prisma Schema + Migration | Daffa | DONE | schema v2.1 (8 tables). SQL in prisma/migrations/. Apply via Supabase SQL editor — see notes |
 | T-02 | Anchor Workspace Init | Dylan | PENDING | — |
 | T-03 | Supabase Auth + Middleware | Daffa | DONE | @supabase/ssr installed; server.ts, client.ts, middleware.ts, auth/callback route, login page complete |
-| T-04 | Constants, Types, Utilities | Daffa | PENDING | Needs T-00 |
+| T-04 | Constants, Types, Utilities | Daffa | DONE | fields.ts, pricing.ts, mock-data.ts, types — all created |
 
-**Phase 0 Progress:** 2 / 5 tickets done
+**Phase 0 Progress:** 4 / 5 tickets done (T-02 is Dylan's Anchor track, runs in parallel)
 
 ---
 

@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary */
+  --color-primary-600: #1B7A65;
+  --color-primary-500: #2A9D82;
+  --color-primary-400: #5FB8A3;
+  --color-primary-100: #E6F3EF;
+
+  /* Earth */
+  --color-earth-600: #C17A5F;
+  --color-earth-500: #D4917A;
+  --color-earth-100: #F5E9E3;
+
+  /* Cream */
+  --color-cream-50:  #FDFBF7;
+  --color-cream-100: #FAF6ED;
+  --color-cream-200: #F5F1EC;
+
+  /* Warm Gray */
+  --color-warmgray-900: #1A1A1A;
+  --color-warmgray-700: #4A4540;
+  --color-warmgray-500: #6B6560;
+
+  /* Semantic */
+  --color-success: #2A9D82;
+  --color-warning: #D4A03D;
+  --color-danger:  #C45B4A;
+  --color-info:    #5B8BA0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-cream-50);
+  color: var(--color-warmgray-900);
+  font-family: var(--font-jakarta), 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular nums for prices */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream-100);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-cream-200);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-warmgray-500);
+}
+
+/* Bouncing dots animation */
+@keyframes bounceDot {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+/* Hero pulse animation */
+@keyframes heroPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.5; }
+}
+
+/* Fade in up */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 400ms ease forwards;
+}
+
+/* Progress bar transition */
+.progress-bar {
+  transition: width 600ms ease;
+}
+
+/* Sidebar nav button hover handled inline */
+
+/* Report loading progress */
+@keyframes progressFill {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
