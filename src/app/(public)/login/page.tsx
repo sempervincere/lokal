@@ -36,18 +36,23 @@ function AuthPageInner() {
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: name, role: role === 'bo' ? 'BUSINESS_OWNER' : 'CLUSTER_OWNER' } },
         });
         if (error) throw error;
+        
+        if (!data.session) {
+          throw new Error('Sesi kosong. Email ini mungkin sudah terdaftar (silakan gunakan menu Masuk), atau cek email Anda untuk konfirmasi bila fitur Confirm Email aktif di Supabase.');
+        }
+
         const dest = role === 'co' ? '/co/dashboard' : '/dashboard';
-        router.push(dest);
+        window.location.href = dest;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push(redirectTo);
+        window.location.href = redirectTo;
       }
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan. Coba lagi.');
