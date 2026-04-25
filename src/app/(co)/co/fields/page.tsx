@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, X, Check } from 'lucide-react';
+import { Globe, X, Check, Link2 } from 'lucide-react';
 import { T, CO_FIELDS } from '@/lib/constants/mock-data';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -9,16 +9,53 @@ import { Button } from '@/components/ui/Button';
 
 type FieldEntry = typeof CO_FIELDS[0];
 
+// Demo cluster slug — will be dynamic when API is ready (T-14)
+const CLUSTER_SLUG = 'depok-margonda-001';
+
 export default function COFieldsPage() {
   const [filter, setFilter] = useState('all');
   const [formBuilderField, setFormBuilderField] = useState<FieldEntry | null>(null);
+  const [surveyLinkCopied, setSurveyLinkCopied] = useState(false);
 
   const validated = CO_FIELDS.filter(f => f.status === 'VALIDATED').length;
   const filtered = filter === 'all' ? CO_FIELDS : CO_FIELDS.filter(f => f.status === filter);
 
+  const surveyUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/survey/${CLUSTER_SLUG}`
+    : `https://lokal.id/survey/${CLUSTER_SLUG}`;
+
+  function copySurveyLink() {
+    navigator.clipboard.writeText(surveyUrl).then(() => {
+      setSurveyLinkCopied(true);
+      setTimeout(() => setSurveyLinkCopied(false), 2000);
+    });
+  }
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative' }}>
       {formBuilderField && <FormBuilderModal field={formBuilderField} onClose={() => setFormBuilderField(null)} />}
+
+      {/* ── Single survey link banner ─────────────────────────────────── */}
+      <div style={{
+        background: T.p100, border: `1px solid ${T.p600}22`, borderRadius: 14,
+        padding: '16px 20px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: T.p600, marginBottom: 4 }}>Link Survei Cluster — Semua 20 Field Tier 1</div>
+          <div style={{
+            fontSize: 12, color: T.g500, fontFamily: 'var(--font-mono), monospace',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{surveyUrl}</div>
+        </div>
+        <button onClick={copySurveyLink} style={{
+          display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9,
+          border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+          background: surveyLinkCopied ? T.success : T.p600, color: T.c50, flexShrink: 0, transition: 'background 200ms',
+        }}>
+          <Link2 size={14} color={T.c50} />
+          {surveyLinkCopied ? 'Tersalin!' : 'Salin Link'}
+        </button>
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -104,9 +141,6 @@ export default function COFieldsPage() {
 }
 
 function FormBuilderModal({ field, onClose }: { field: FieldEntry; onClose: () => void }) {
-  const [linkCopied, setLinkCopied] = useState(false);
-  const mockLink = `https://forms.lokal.id/s/${field.code.toLowerCase()}-margonda-abc12`;
-
   const questions = field.complex
     ? [
         { id: 1, text: `Berapa maksimal yang bersedia kamu bayar untuk kategori ${field.name}?`, type: 'range' },
@@ -117,8 +151,6 @@ function FormBuilderModal({ field, onClose }: { field: FieldEntry; onClose: () =
         { id: 1, text: 'Kapan jam ramai pengunjung di area ini menurut pengamatanmu?', type: 'choice' },
         { id: 2, text: 'Apakah ada catatan tambahan untuk data ini?', type: 'text' },
       ];
-
-  const copyLink = () => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); };
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -176,19 +208,7 @@ function FormBuilderModal({ field, onClose }: { field: FieldEntry; onClose: () =
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.c200}`, display: 'flex', gap: 10, alignItems: 'center' }}>
-          <div style={{ flex: 1, background: T.c100, borderRadius: 9, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-            <Globe size={14} color={T.g500} />
-            <span style={{ fontSize: 11, color: T.g500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono), monospace' }}>{mockLink}</span>
-          </div>
-          <button onClick={copyLink} style={{
-            padding: '9px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
-            background: linkCopied ? T.success : T.p600, color: T.c50,
-            fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-          }}>
-            <Globe size={14} color={T.c50} />
-            {linkCopied ? 'Tersalin!' : 'Salin Link'}
-          </button>
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.c200}`, display: 'flex', justifyContent: 'flex-end' }}>
           <Button onClick={onClose}>Simpan & Tutup</Button>
         </div>
       </div>

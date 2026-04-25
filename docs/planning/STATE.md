@@ -1,6 +1,6 @@
 # LOKAL — Development State Tracker
-> **Last Updated:** Day 2 (2026-04-19) | *Update this file every session.*
-> **Session Note:** Full frontend implementation done — landing, auth, BO dashboard (full flow), CO dashboard (full flow). Build passes clean.
+> **Last Updated:** Day 6 (2026-04-25) | *Update this file every session.*
+> **Session Note:** T-04 constants/types done. T-05 WalletProvider done. T-06 UI library completed. Supabase→Prisma user sync built. anchor/.git removed. Jatevo AI integrated.
 
 ---
 
@@ -22,10 +22,10 @@
 | T-00 | Git + Next.js Scaffolding | Daffa | DONE | next.config.mjs, tailwind, tsconfig complete |
 | T-01 | Prisma Schema + Migration | Daffa | DONE | schema v2.1 (8 tables). SQL in prisma/migrations/. Apply via Supabase SQL editor — see notes |
 | T-02 | Anchor Workspace Init | Dylan | PENDING | — |
-| T-03 | Supabase Auth + Middleware | Daffa | DONE | @supabase/ssr installed; server.ts, client.ts, middleware.ts, auth/callback route, login page complete |
-| T-04 | Constants, Types, Utilities | Daffa | DONE | fields.ts, pricing.ts, mock-data.ts, types — all created |
+| T-03 | Supabase Auth + Middleware | Daffa | DONE | @supabase/ssr; server.ts, client.ts, middleware.ts complete. User sync to Prisma added (syncUser.ts + /api/auth/sync). |
+| T-04 | Constants, Types, Utilities | Daffa | DONE | fields.ts, pricing.ts, cluster.ts, session.ts, report.ts in src/lib/constants/. CLAUDE_MODEL=qwen3.5-plus. |
 
-**Phase 0 Progress:** 4 / 5 tickets done (T-02 is Dylan's Anchor track, runs in parallel)
+**Phase 0 Progress:** 4 / 5 tickets done (T-02 is Dylan's Anchor track — anchor/.git removed, source now tracked in main repo)
 
 ---
 
@@ -33,11 +33,11 @@
 
 | Ticket | Title | Owner | Status | Blocker / Notes |
 |--------|-------|-------|--------|-----------------|
-| T-05 | Wallet Adapter Provider | Daffa | PENDING | Needs T-00, T-03 |
-| T-06 | UI Component Library | Daffa | PENDING | Needs T-00 |
-| T-07 | Seed Margonda Cluster Shell | Daffa | PENDING | Needs T-01 |
+| T-05 | Wallet Adapter Provider | Daffa | DONE | SolanaWalletProvider created. Root layout updated. All wallet-adapter packages already installed. |
+| T-06 | UI Component Library | Daffa | DONE | Button (loading+danger), Badge, Card, Modal, InputField, LoadingSpinner, ProgressBar all done. |
+| T-07 | Seed Margonda Cluster Shell | Daffa | DONE | Seed run: admin@lokal.id, ClusterOwner e26ed832, Cluster depok-margonda-001 (SEEDING). prisma.config.ts updated with seed command. |
 
-**Phase 1 Progress:** 0 / 3 tickets done
+**Phase 1 Progress:** 2 / 3 tickets done
 
 ---
 
@@ -45,7 +45,7 @@
 
 | Ticket | Title | Owner | Status | Blocker / Notes |
 |--------|-------|-------|--------|-----------------|
-| T-08 | Anchor Program `lokal_core` | Dylan | PENDING | Needs T-02 |
+| T-08 | Anchor Program `lokal_core` | Dylan | DONE | Needs T-02 |
 | T-09 | Anchor Tests | Dylan | PENDING | Needs T-08 |
 | T-10 | Field Hash Utility | Dylan | PENDING | Needs T-00 |
 | T-11 | IDRX Payment Tx Builder | Dylan | PENDING | Needs T-00, T-04 |
@@ -128,14 +128,14 @@
 | Phase | Done | Total | % |
 |-------|------|-------|---|
 | 0 — Initialization | 3 | 5 | 60% |
-| 1 — Foundation UI | 0 | 3 | 0% |
+| 1 — Foundation UI | 1 | 3 | 33% |
 | 2 — Blockchain Core | 0 | 6 | 0% |
 | 3 — Data Layer + Chat | 0 | 7 | 0% |
 | 4 — Payment + Reports | 0 | 6 | 0% |
 | 5 — Session Flow | 0 | 4 | 0% |
 | 6 — Demo Polish | 0 | 3 | 0% |
 | 7 — Final Prep | 0 | 2 | 0% |
-| **TOTAL** | **3** | **36** | **8%** |
+| **TOTAL** | **4** | **36** | **11%** |
 
 ---
 

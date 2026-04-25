@@ -2,6 +2,9 @@
   "name": "lokal",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,6 +22,7 @@
     "@solana/web3.js": "^1.98.4",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
+    "buffer": "^6.0.3",
     "lucide-react": "^1.8.0",
     "next": "14.2.3",
     "ngrok": "^5.0.0-beta.2",

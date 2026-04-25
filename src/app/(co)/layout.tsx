@@ -2,10 +2,12 @@
 
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, FileText, DollarSign, MapPin, LogOut, Award } from 'lucide-react';
+import { Activity, FileText, DollarSign, MapPin, LogOut, Award, Wallet } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 const NAV_ITEMS = [
   { id: 'overview', href: '/co/dashboard', icon: Activity,    label: 'Overview' },
@@ -17,6 +19,8 @@ const NAV_ITEMS = [
 export default function COLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { connected, publicKey, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
 
   const activePage = NAV_ITEMS.find(n => pathname.startsWith(n.href))?.id ?? 'overview';
 
@@ -59,11 +63,26 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
 
         {/* Wallet + logout */}
         <div style={{ padding: '12px 10px', borderTop: `1px solid ${T.c200}` }}>
-          <div style={{ padding: '10px 12px', borderRadius: 10, background: T.p100, marginBottom: 6 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.p600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Wallet</div>
-            <div style={{ fontSize: 11, color: T.g500, fontFamily: 'var(--font-mono), monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>7xKp...3mNq</div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: T.p600, marginTop: 4 }}>Rp 485.000 IDRX</div>
-          </div>
+          {connected && publicKey ? (
+            <div style={{ padding: '10px 12px', borderRadius: 10, background: T.p100, marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: T.p600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Wallet Terhubung</div>
+              <div style={{ fontSize: 11, color: T.g500, fontFamily: 'var(--font-mono), monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {publicKey.toBase58().slice(0, 6)}...{publicKey.toBase58().slice(-4)}
+              </div>
+              <button onClick={() => disconnect()} style={{ marginTop: 6, fontSize: 11, color: T.danger, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                Putuskan
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setVisible(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+              color: T.e600, background: T.e100, transition: 'all 150ms', width: '100%', marginBottom: 6,
+            }}>
+              <Wallet size={15} color={T.e600} />
+              Hubungkan Wallet
+            </button>
+          )}
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,
             border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 500,

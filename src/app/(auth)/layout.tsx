@@ -6,6 +6,8 @@ import { Activity, MapPin, FileText, CreditCard, Wallet, LogOut } from 'lucide-r
 import { T } from '@/lib/constants/mock-data';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 
 const NAV_ITEMS = [
   { id: 'overview',     href: '/dashboard',              icon: Activity,   label: 'Overview' },
@@ -24,7 +26,8 @@ function getActiveId(pathname: string) {
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [walletConnected, setWalletConnected] = useState(false);
+  const { connected, publicKey, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
 
   // Session-only routes (concept, report) don't need the sidebar
   const isSessionRoute = pathname.startsWith('/session/');
@@ -68,16 +71,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Bottom actions */}
         <div style={{ padding: '12px 10px', borderTop: `1px solid ${T.c200}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <button onClick={() => setWalletConnected(w => !w)} style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-            color: walletConnected ? T.success : T.e600,
-            background: walletConnected ? T.p100 : T.e100,
-            transition: 'all 150ms', width: '100%',
-          }}>
-            <Wallet size={15} color={walletConnected ? T.success : T.e600} />
-            {walletConnected ? 'Wallet Terhubung' : 'Hubungkan Wallet'}
-            {walletConnected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.success, marginLeft: 'auto' }} />}
+          <button
+            onClick={() => connected ? disconnect() : setVisible(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10,
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+              color: connected ? T.success : T.e600,
+              background: connected ? T.p100 : T.e100,
+              transition: 'all 150ms', width: '100%',
+            }}>
+            <Wallet size={15} color={connected ? T.success : T.e600} />
+            {connected && publicKey
+              ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
+              : 'Hubungkan Wallet'}
+            {connected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.success, marginLeft: 'auto' }} />}
           </button>
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10,

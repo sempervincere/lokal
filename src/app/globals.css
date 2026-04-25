@@ -1,3 +1,5 @@
+@import '@solana/wallet-adapter-react-ui/styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -102,3 +104,16 @@ body {
   from { width: 0%; }
   to   { width: 100%; }
 }
+
+/* LoadingSpinner rotation */
+@keyframes lokal-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Modal panel entrance */
+@keyframes lokal-fade-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+

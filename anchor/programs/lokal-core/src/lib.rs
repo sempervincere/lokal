@@ -15,7 +15,20 @@ declare_id!("4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ");
 pub mod lokal_core {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn initialize_cluster(
+        ctx: Context<InitializeCluster>,
+        slug: String,
+        name: String,
+    ) -> Result<()> {
+        instructions::initialize_cluster::handler(ctx, slug, name)
+    }
+
+    pub fn anchor_field_hash(
+        ctx: Context<AnchorFieldHash>,
+        slug: String,
+        field_code: String,
+        field_hash: String,
+    ) -> Result<()> {
+        instructions::anchor_field_hash::handler(ctx, slug, field_code, field_hash)
     }
 }

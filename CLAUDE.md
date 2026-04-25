@@ -32,25 +32,25 @@
 
 ## 3. Stack (Authoritative — Do Not Substitute)
 
-| Layer            | Choice                                                     | Notes for you                                                                |
-| ---------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Framework        | **Next.js 14 (App Router)**                                | Not Pages Router. Not Remix.                                                 |
-| Language         | **TypeScript** everywhere except `/anchor/programs/*`      |                                                                              |
-| Styling          | **Tailwind CSS**                                           | No Chakra, no Material UI.                                                   |
-| State            | **Zustand**                                                | No Redux. No Jotai.                                                          |
-| Forms            | **React Hook Form**                                        | Required for the menu builder.                                               |
-| DB               | **Supabase Postgres** via **Prisma ORM**                   | Not Drizzle. Not raw SQL in app code.                                        |
-| Auth             | **Supabase Auth** (email + Google OAuth)                   |                                                                              |
-| AI               | **Anthropic Claude API**, model `claude-sonnet-4-20250514` | Hardcode this model string. Do not substitute.                               |
-| Wallet           | **@solana/wallet-adapter** (Phantom target)                |                                                                              |
-| Map              | **Mapbox GL JS**                                           |                                                                              |
-| Anchor framework | **Anchor (Rust, stable)**                                  | **NOT Quasar. Quasar is beta and unaudited — death for a 26-day hackathon.** |
-| NFT standard     | **Metaplex Core** with `NonTransferable` plugin            | Soulbound. Minted from TS backend via Umi.                                   |
-| SPL              | **IDRX** (existing mint, do not create one)                | 2 decimals. Amount = `400000_00` base units.                                 |
-| RPC              | **Helius devnet**                                          | Webhooks for payment detection. Never public RPC.                            |
-| PDF              | **@react-pdf/renderer**                                    | Server-side render to buffer, upload to R2. **No Puppeteer.**                |
-| Storage          | **Cloudflare R2**                                          | For PDFs + CO evidence photos.                                               |
-| Deploy           | **Vercel**                                                 | Edge runtime compatible routes where possible.                               |
+| Layer            | Choice                                                | Notes for you                                                                |
+| ---------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Framework        | **Next.js 14 (App Router)**                           | Not Pages Router. Not Remix.                                                 |
+| Language         | **TypeScript** everywhere except `/anchor/programs/*` |                                                                              |
+| Styling          | **Tailwind CSS**                                      | No Chakra, no Material UI.                                                   |
+| State            | **Zustand**                                           | No Redux. No Jotai.                                                          |
+| Forms            | **React Hook Form**                                   | Required for the menu builder.                                               |
+| DB               | **Supabase Postgres** via **Prisma ORM**              | Not Drizzle. Not raw SQL in app code.                                        |
+| Auth             | **Supabase Auth** (email + Google OAuth)              |                                                                              |
+| AI               | **Anthropic Claude API**, model `qwen3.5-plus`        | Hardcode this model string. Do not substitute.                               |
+| Wallet           | **@solana/wallet-adapter** (Phantom target)           |                                                                              |
+| Map              | **Mapbox GL JS**                                      |                                                                              |
+| Anchor framework | **Anchor (Rust, stable)**                             | **NOT Quasar. Quasar is beta and unaudited — death for a 26-day hackathon.** |
+| NFT standard     | **Metaplex Core** with `NonTransferable` plugin       | Soulbound. Minted from TS backend via Umi.                                   |
+| SPL              | **IDRX** (existing mint, do not create one)           | 2 decimals. Amount = `400000_00` base units.                                 |
+| RPC              | **Helius devnet**                                     | Webhooks for payment detection. Never public RPC.                            |
+| PDF              | **@react-pdf/renderer**                               | Server-side render to buffer, upload to R2. **No Puppeteer.**                |
+| Storage          | **Cloudflare R2**                                     | For PDFs + CO evidence photos.                                               |
+| Deploy           | **Vercel**                                            | Edge runtime compatible routes where possible.                               |
 
 ### Things we explicitly cut (do NOT reintroduce)
 
@@ -422,6 +422,10 @@ Quick-reference for every AI context you can invoke. Use the agent best matched 
 
 - `.planning/PLAN.md` — Full 36-ticket development plan with acceptance criteria
 - `.planning/STATE.md` — Ticket status tracking (update every session)
+
+### IMPORTANT NOTES
+
+Always use Context7 documentations so you can get better context and always up to date with the documentations so you won't hallucinate
 
 ### Appendix
 

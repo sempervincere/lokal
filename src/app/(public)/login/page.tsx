@@ -42,17 +42,27 @@ function AuthPageInner() {
           options: { data: { full_name: name, role: role === 'bo' ? 'BUSINESS_OWNER' : 'CLUSTER_OWNER' } },
         });
         if (error) throw error;
-        
+
         if (!data.session) {
           throw new Error('Sesi kosong. Email ini mungkin sudah terdaftar (silakan gunakan menu Masuk), atau cek email Anda untuk konfirmasi bila fitur Confirm Email aktif di Supabase.');
         }
+
+        // Sync to our Prisma users table — fire-and-await, non-blocking on failure
+        await fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
 
         const dest = role === 'co' ? '/co/dashboard' : '/dashboard';
         window.location.href = dest;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        window.location.href = redirectTo;
+
+        // Sync on every login in case the record was missing
+        await fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
+
+        // Route based on role — CO goes to /co/dashboard, BO goes to /dashboard
+        const { data: { user: signedInUser } } = await supabase.auth.getUser();
+        const userRole = signedInUser?.user_metadata?.role;
+        window.location.href = userRole === 'CLUSTER_OWNER' ? '/co/dashboard' : '/dashboard';
       }
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan. Coba lagi.');
@@ -61,12 +71,16 @@ function AuthPageInner() {
     }
   }
 
+
   async function handleGoogle() {
     setLoading(true);
     setError(null);
+    const roleParam = role === 'co' ? 'CLUSTER_OWNER' : 'BUSINESS_OWNER';
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=${redirectTo}` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${redirectTo}&role=${roleParam}`,
+      },
     });
     if (error) { setError(error.message); setLoading(false); }
   }
