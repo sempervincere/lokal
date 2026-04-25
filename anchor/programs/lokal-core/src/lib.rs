@@ -12,7 +12,7 @@ pub use state::*;
 declare_id!("4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ");
 
 #[program]
-pub mod anchor {
+pub mod lokal_core {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
