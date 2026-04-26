@@ -1,6 +1,6 @@
 # LOKAL — Development State Tracker
-> **Last Updated:** Day 6 (2026-04-25) | *Update this file every session.*
-> **Session Note:** T-04 constants/types done. T-05 WalletProvider done. T-06 UI library completed. Supabase→Prisma user sync built. anchor/.git removed. Jatevo AI integrated.
+> **Last Updated:** Day 7 (2026-04-26) | *Update this file every session.*
+> **Session Note:** T-09 through T-13 all completed (Phase 2 Blockchain Core done). IDRX decimals updated to 6 (devnet mint: 4piP71B...). CO soulbound NFT minted on devnet. Anchor client smoke-tested with real devnet txs.
 
 ---
 
@@ -21,11 +21,11 @@
 |--------|-------|-------|--------|-----------------|
 | T-00 | Git + Next.js Scaffolding | Daffa | DONE | next.config.mjs, tailwind, tsconfig complete |
 | T-01 | Prisma Schema + Migration | Daffa | DONE | schema v2.1 (8 tables). SQL in prisma/migrations/. Apply via Supabase SQL editor — see notes |
-| T-02 | Anchor Workspace Init | Dylan | PENDING | — |
+| T-02 | Anchor Workspace Init | Dylan | DONE | — |
 | T-03 | Supabase Auth + Middleware | Daffa | DONE | @supabase/ssr; server.ts, client.ts, middleware.ts complete. User sync to Prisma added (syncUser.ts + /api/auth/sync). |
 | T-04 | Constants, Types, Utilities | Daffa | DONE | fields.ts, pricing.ts, cluster.ts, session.ts, report.ts in src/lib/constants/. CLAUDE_MODEL=qwen3.5-plus. |
 
-**Phase 0 Progress:** 4 / 5 tickets done (T-02 is Dylan's Anchor track — anchor/.git removed, source now tracked in main repo)
+**Phase 0 Progress:** 5 / 5 tickets done (T-02 is Dylan's Anchor track — anchor/.git removed, source now tracked in main repo)
 
 ---
 
@@ -37,7 +37,7 @@
 | T-06 | UI Component Library | Daffa | DONE | Button (loading+danger), Badge, Card, Modal, InputField, LoadingSpinner, ProgressBar all done. |
 | T-07 | Seed Margonda Cluster Shell | Daffa | DONE | Seed run: admin@lokal.id, ClusterOwner e26ed832, Cluster depok-margonda-001 (SEEDING). prisma.config.ts updated with seed command. |
 
-**Phase 1 Progress:** 2 / 3 tickets done
+**Phase 1 Progress:** 3 / 3 tickets done
 
 ---
 
@@ -45,14 +45,14 @@
 
 | Ticket | Title | Owner | Status | Blocker / Notes |
 |--------|-------|-------|--------|-----------------|
-| T-08 | Anchor Program `lokal_core` | Dylan | DONE | Needs T-02 |
-| T-09 | Anchor Tests | Dylan | PENDING | Needs T-08 |
-| T-10 | Field Hash Utility | Dylan | PENDING | Needs T-00 |
-| T-11 | IDRX Payment Tx Builder | Dylan | PENDING | Needs T-00, T-04 |
-| T-12 | Metaplex Core NFT Minting | Dylan | PENDING | Needs T-00 |
-| T-13 | Anchor Client (TypeScript) | Dylan | PENDING | Needs T-08 (IDL) |
+| T-08 | Anchor Program `lokal_core` | Dylan | DONE | Deployed at 4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ |
+| T-09 | Anchor Tests | Dylan | DONE | 3/3 tests pass on devnet. anchor/tests/lokal-core.ts. |
+| T-10 | Field Hash Utility | Dylan | DONE | 9/9 vitest tests pass. Golden value frozen. src/lib/solana/fieldHash.ts |
+| T-11 | IDRX Payment Tx Builder | Dylan | DONE | IDRX decimals = 6, base units = 400_000_000_000. Platform ATA created: DSoCo1x... 5/5 tests pass. |
+| T-12 | Metaplex Core NFT Minting | Dylan | DONE | NFT minted at 6VpbFiLLJas1CRV8wWD6LKe6pMejUX4wa5ZYgGfoufp3. PermanentFreezeDelegate (soulbound). Check Phantom NFT tab on devnet. |
+| T-13 | Anchor Client (TypeScript) | Dylan | DONE | anchorClient.ts smoke-tested. initializeCluster + anchorFieldHash both hit devnet. |
 
-**Phase 2 Progress:** 0 / 6 tickets done
+**Phase 2 Progress:** 6 / 6 tickets done ✅
 
 ---
 
@@ -127,15 +127,15 @@
 
 | Phase | Done | Total | % |
 |-------|------|-------|---|
-| 0 — Initialization | 3 | 5 | 60% |
-| 1 — Foundation UI | 1 | 3 | 33% |
-| 2 — Blockchain Core | 0 | 6 | 0% |
+| 0 — Initialization | 5 | 5 | 100% |
+| 1 — Foundation UI | 3 | 3 | 100% |
+| 2 — Blockchain Core | 6 | 6 | 100% ✅ |
 | 3 — Data Layer + Chat | 0 | 7 | 0% |
 | 4 — Payment + Reports | 0 | 6 | 0% |
 | 5 — Session Flow | 0 | 4 | 0% |
 | 6 — Demo Polish | 0 | 3 | 0% |
 | 7 — Final Prep | 0 | 2 | 0% |
-| **TOTAL** | **4** | **36** | **11%** |
+| **TOTAL** | **14** | **36** | **38.9%** |
 
 ---
 
@@ -157,10 +157,10 @@
 - [ ] 12-hour paid chat opens and responds
 
 ### Blockchain Proof Points
-- [ ] Solana Explorer: field hash Memo transaction visible
-- [ ] Solana Explorer: IDRX payment tx with sessionId in Memo
-- [ ] Phantom: CO soulbound NFT in Dylan's wallet
-- [ ] Phantom: NFT shows as non-transferable
+- [x] Solana Explorer: field hash Memo transaction visible — tx 2vk2v6SRQs... (B1, Margonda)
+- [ ] Solana Explorer: IDRX payment tx with sessionId in Memo — needs T-23/T-24
+- [x] Phantom: CO soulbound NFT in Dylan's wallet — 6VpbFiLLJas1CRV8wWD6LKe6pMejUX4wa5ZYgGfoufp3 (devnet)
+- [x] Phantom: NFT shows as non-transferable — PermanentFreezeDelegate plugin set
 
 ---
 
@@ -174,7 +174,10 @@
 | Day 0 | No pgvector/RAG | One cluster, 20 fields, direct prompt injection is sufficient |
 | Day 0 | Single Claude call for report | Simpler, faster, cheaper than 10 per-section calls |
 | Day 0 | @react-pdf/renderer not Puppeteer | Zero infra overhead, no headless Chrome needed |
-| Day 0 | IDRX decimals = 2, base units = 40_000_000 | Critical invariant — verify in every payment-related ticket |
+| Day 0 | IDRX decimals = 2, base units = 40_000_000 | Original spec — overridden Day 7 |
+| Day 7 | IDRX decimals = 6, base units = 400_000_000_000 | Devnet IDRX mint (4piP71B...) has 6 decimals. Updated pricing.ts, CLAUDE.md, idrxTransfer.ts. |
+| Day 7 | CO soulbound NFT: PermanentFreezeDelegate (not NonTransferable) | mpl-core plugin confirmed via Context7 + package inspection. NFT at 6VpbFiL... |
+| Day 7 | NEXT_PUBLIC_HELIUS_RPC_URL (not HELIUS_RPC_URL) | .env.local uses NEXT_PUBLIC_ prefix. anchorClient.ts and mintCoNft.ts handle both. |
 
 ---
 

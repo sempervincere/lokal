@@ -46,7 +46,7 @@
 | Map              | **Mapbox GL JS**                                      |                                                                              |
 | Anchor framework | **Anchor (Rust, stable)**                             | **NOT Quasar. Quasar is beta and unaudited — death for a 26-day hackathon.** |
 | NFT standard     | **Metaplex Core** with `NonTransferable` plugin       | Soulbound. Minted from TS backend via Umi.                                   |
-| SPL              | **IDRX** (existing mint, do not create one)           | 2 decimals. Amount = `400000_00` base units.                                 |
+| SPL              | **IDRX** (existing mint, do not create one)           | 6 decimals. Amount = `400_000_000_000` base units.                           |
 | RPC              | **Helius devnet**                                     | Webhooks for payment detection. Never public RPC.                            |
 | PDF              | **@react-pdf/renderer**                               | Server-side render to buffer, upload to R2. **No Puppeteer.**                |
 | Storage          | **Cloudflare R2**                                     | For PDFs + CO evidence photos.                                               |
@@ -123,7 +123,7 @@ lokal/
 - **Field hash** — SHA-256 over `{ fieldCode, value }` with sorted keys. Anchored on Solana via Memo program.
 - **Confidence Score (0–100)** — How complete/validated a cluster's data is.
 - **Soulbound NFT** — CO credential. Non-transferable. Minted once per approved CO.
-- **IDRX** — Indonesian rupiah-pegged SPL token. 2 decimals. 1 IDRX = 1 IDR.
+- **IDRX** — Indonesian rupiah-pegged SPL token. 6 decimals. 1 IDRX = 1 IDR.
 - **Price ceiling** — Max price this cluster will bear for a given F&B subcategory. The uncle's matcha problem.
 - **CO earnings** — Revenue share credited to CO per session (5% flat = 20,000 IDRX). Tracked in `co_earnings` table.
 
@@ -225,7 +225,7 @@ Admin approves CO application
 ## 9. Core Code Invariants
 
 - **Field hash is canonical.** Always: `sha256(JSON.stringify({ fieldCode, value }, Object.keys({...}).sort()))`. Do not change the serialization — every existing hash becomes invalid.
-- **Payment price constant.** `SESSION_PRICE_IDRX = 400_000` in IDR, `400_000_00` in base units (2 decimals). Lives in `src/lib/constants/pricing.ts`.
+- **Payment price constant.** `SESSION_PRICE_IDRX = 400_000` in IDR, `400_000_000_000` in base units (6 decimals). Lives in `src/lib/constants/pricing.ts`.
 - **CO share rate constant.** `CO_SESSION_SHARE_RATE = 0.05`. `CO_SESSION_SHARE_IDRX = 20_000`. Lives in `src/lib/constants/pricing.ts`.
 - **Session expiry is exactly 12 hours.** `expiresAt = new Date(activatedAt.getTime() + 12 * 60 * 60 * 1000)`.
 - **Free chat limit is 7 messages, counted from DB.** Never trust the client's count. Query: `SELECT count(*) FROM messages WHERE sessionId = ? AND isFree = true`.
@@ -248,7 +248,7 @@ When working on this project you have historically made these mistakes. Before w
 6. **Supabase client in Next.js.** Use `@supabase/ssr` for App Router, NOT `@supabase/auth-helpers-nextjs` (deprecated).
 7. **Prisma singleton in Next.js dev.** Use `globalThis.prisma` pattern or hot-reload creates dozens of connections.
 8. **Helius webhook payload shape.** It is an **array** of transactions, each with `tokenTransfers`, `instructions`, `signature`. Memo data is base64 inside the Memo program instruction.
-9. **IDRX decimals.** IDRX is 2 decimals (not 6 like USDC, not 9 like SOL). Rp 400,000 = `40_000_000` base units.
+9. **IDRX decimals.** This devnet IDRX mint has 6 decimals (same as USDC). Rp 400,000 = `400_000_000_000` base units. Constant: `SESSION_PRICE_BASE_UNITS = 400_000_000_000`.
 10. **Vercel function timeout.** Default is 10s on Hobby, 60s on Pro. Report generation needs Pro tier OR must be moved to a background job. The TDD assumes Pro.
 
 **When unsure about any Solana/Anchor/Metaplex API, run `context7` first.** Do not reconstruct APIs from memory.
