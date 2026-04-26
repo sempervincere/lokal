@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { deriveClusterStats } from "@/lib/utils/clusterStats";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export async function GET() {
         totalValidatedFields: true,
         status: true,
         createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             fieldValues: {
@@ -27,11 +29,38 @@ export async function GET() {
             },
           },
         },
+        fieldValues: {
+          where: { status: "VALIDATED" },
+          select: {
+            fieldCode: true,
+            value: true,
+            status: true,
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
 
-    return NextResponse.json(clusters, {
+    // Derive stats and strip raw value before returning
+    const response = clusters.map((cluster) => {
+      const keyStats = deriveClusterStats(
+        cluster.fieldValues.map((f) => ({
+          fieldCode: f.fieldCode,
+          value: f.value,
+          status: f.status,
+        }))
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { fieldValues: _fv, ...rest } = cluster;
+
+      return {
+        ...rest,
+        keyStats,
+      };
+    });
+
+    return NextResponse.json(response, {
       headers: {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
       },

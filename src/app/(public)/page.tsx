@@ -3,20 +3,123 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { MapPin, MessageCircle, FileText, ShieldCheck, Clock, ArrowRight, Check } from 'lucide-react';
-import { T, CLUSTERS } from '@/lib/constants/mock-data';
+import { T } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ConfidenceRing } from '@/components/ui/ConfidenceRing';
 import { MapPlaceholder } from '@/components/ui/MapPlaceholder';
+import type { ClusterKeyStats } from '@/lib/utils/clusterStats';
+
+// API cluster shape returned by GET /api/clusters
+interface ApiCluster {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  anchorLat: number;
+  anchorLng: number;
+  anchorLabel: string;
+  radiusKm: number;
+  confidenceScore: number;
+  dataCompleteness: number;
+  totalValidatedFields: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: { fieldValues: number };
+  keyStats: ClusterKeyStats;
+}
+
+// Display shape for landing cluster cards (subset of ClusterData)
+interface LandingCluster {
+  id: string;
+  slug: string;
+  name: string;
+  subtitle: string;
+  city: string;
+  neighborhood: string;
+  confidence: number;
+  completeness: number;
+  zkPoints: number;
+  status: 'Active' | 'Seeding';
+  categories: string[];
+  traffic: string;
+  freshness: number;
+  accent: string;
+  iconColor: string;
+  keyStats: {
+    priceCeiling: number;
+    willingness: number;
+    digitalPayment: number;
+    peakHour: string;
+    dominantAge: string;
+    halal: number;
+  };
+}
+
+// City metadata for clusters known to us — extend as clusters are added
+const CLUSTER_CITY_META: Record<string, { city: string; neighborhood: string; subtitle: string; accent: string; iconColor: string }> = {
+  'depok-margonda-001': {
+    city: 'Depok',
+    neighborhood: 'Beji, Depok',
+    subtitle: 'UI Gate — Margo City',
+    accent: '#E6F3EF',
+    iconColor: '#1B7A65',
+  },
+};
+
+function hoursAgo(isoDate: string): number {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  return Math.floor(diff / (1000 * 60 * 60));
+}
+
+function mapApiToLanding(c: ApiCluster): LandingCluster {
+  const meta = CLUSTER_CITY_META[c.slug] ?? {
+    city: 'Indonesia',
+    neighborhood: c.anchorLabel,
+    subtitle: c.anchorLabel,
+    accent: '#E6F3EF',
+    iconColor: '#1B7A65',
+  };
+  const ks = c.keyStats;
+  return {
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    subtitle: meta.subtitle,
+    city: meta.city,
+    neighborhood: meta.neighborhood,
+    confidence: c.confidenceScore,
+    completeness: c.dataCompleteness,
+    zkPoints: c.totalValidatedFields,
+    status: c.status === 'ACTIVE' ? 'Active' : 'Seeding',
+    categories: ks.categories.length > 0 ? ks.categories : ['F&B'],
+    traffic: ks.trafficLevel,
+    freshness: hoursAgo(c.updatedAt),
+    accent: meta.accent,
+    iconColor: meta.iconColor,
+    keyStats: {
+      priceCeiling: ks.priceCeiling ?? 0,
+      willingness: ks.willingness ?? 0,
+      digitalPayment: ks.digitalPayment ?? 0,
+      peakHour: ks.peakHour ?? '—',
+      dominantAge: ks.dominantAge ?? '—',
+      halal: ks.halal ?? 0,
+    },
+  };
+}
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [vis, setVis] = useState(false);
   const [cityFilter, setCityFilter] = useState('Semua Kota');
+  const [apiClusters, setApiClusters] = useState<LandingCluster[]>([]);
+  const [heroCluster, setHeroCluster] = useState<{ confidence: number } | null>(null);
+  const [clustersLoading, setClustersLoading] = useState(true);
 
   const cities = ['Semua Kota', 'Depok', 'Jakarta Selatan', 'Tangerang Selatan', 'Surabaya'];
 
-  const filteredClusters = CLUSTERS.filter(c =>
+  const filteredClusters = apiClusters.filter(c =>
     cityFilter === 'Semua Kota' || c.city === cityFilter
   );
 
@@ -24,7 +127,30 @@ export default function LandingPage() {
     setTimeout(() => setVis(true), 100);
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
+
+    // Fetch real clusters from API with 6s timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    fetch('/api/clusters', { signal: controller.signal })
+      .then(r => r.json())
+      .then((data: ApiCluster[]) => {
+        if (!Array.isArray(data)) return;
+        const mapped = data.map(mapApiToLanding);
+        setApiClusters(mapped);
+        const margonda = data.find(c => c.slug === 'depok-margonda-001');
+        if (margonda) setHeroCluster({ confidence: margonda.confidenceScore });
+      })
+      .catch(() => { /* fail silently — hero card shows static fallback */ })
+      .finally(() => {
+        clearTimeout(timeout);
+        setClustersLoading(false);
+      });
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   const scrollTo = (id: string) => {
@@ -123,7 +249,7 @@ export default function LandingPage() {
                     <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>Jalan Margonda</div>
                     <div style={{ fontSize: 13, color: T.g500, marginTop: 2 }}>UI Gate — Margo City · Depok</div>
                   </div>
-                  <ConfidenceRing score={87} />
+                  <ConfidenceRing score={heroCluster?.confidence ?? 87} />
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
                   <Badge variant="active"><ShieldCheck size={10} color={T.p600} /> Active</Badge>
@@ -151,7 +277,7 @@ export default function LandingPage() {
             {/* Floating score badge */}
             <div style={{ position: 'absolute', top: -16, right: -16, background: T.g900, borderRadius: 14, padding: '10px 16px', boxShadow: '0 8px 24px rgba(26,26,26,0.2)' }}>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Confidence Score</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: T.c50, letterSpacing: '-0.02em' }}>87<span style={{ fontSize: 12, opacity: 0.6 }}>/100</span></div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: T.c50, letterSpacing: '-0.02em' }}>{heroCluster?.confidence ?? 87}<span style={{ fontSize: 12, opacity: 0.6 }}>/100</span></div>
             </div>
           </div>
         </div>
@@ -224,9 +350,23 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
-          {filteredClusters.map((c, i) => <LandingClusterCard key={c.id} cluster={c} delay={i * 80} />)}
-        </div>
+        {clustersLoading ? (
+          <div style={{ textAlign: 'center', padding: '48px 0', color: T.g500, fontSize: 14 }}>
+            Memuat data cluster...
+          </div>
+        ) : filteredClusters.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
+            {filteredClusters.map((c, i) => <LandingClusterCard key={c.id} cluster={c} delay={i * 80} />)}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🗺️</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 6 }}>
+              {cityFilter === 'Semua Kota' ? 'Belum ada cluster aktif' : `Belum ada cluster di ${cityFilter}`}
+            </div>
+            <div style={{ fontSize: 14, color: T.g500 }}>Segera hadir — kami sedang memperluas coverage ke kota-kota baru.</div>
+          </div>
+        )}
         <div style={{ textAlign: 'center', marginTop: 36 }}>
           <Button variant="secondary" onClick={() => { window.location.href = '/login'; }} icon={<ArrowRight size={15} color={T.p600} />}>
             Lihat Semua Cluster
@@ -317,7 +457,7 @@ function NavLink({ children, onClick }: { children: React.ReactNode; onClick?: (
   );
 }
 
-function LandingClusterCard({ cluster: c, delay }: { cluster: typeof CLUSTERS[0]; delay: number }) {
+function LandingClusterCard({ cluster: c, delay }: { cluster: LandingCluster; delay: number }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);

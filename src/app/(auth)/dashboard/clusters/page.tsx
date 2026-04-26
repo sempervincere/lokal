@@ -2,8 +2,106 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check } from 'lucide-react';
-import { T, CLUSTERS, REPORT_SECTIONS, MENU_ITEMS } from '@/lib/constants/mock-data';
+import { T, CLUSTERS, ClusterData, REPORT_SECTIONS, MENU_ITEMS } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
+import type { ClusterKeyStats } from '@/lib/utils/clusterStats';
+
+// API cluster shape returned by GET /api/clusters
+interface ApiCluster {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  anchorLat: number;
+  anchorLng: number;
+  anchorLabel: string;
+  radiusKm: number;
+  confidenceScore: number;
+  dataCompleteness: number;
+  totalValidatedFields: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  _count: { fieldValues: number };
+  keyStats: ClusterKeyStats;
+}
+
+// City/display metadata for known clusters — extend as more clusters are added
+const CLUSTER_DISPLAY_META: Record<string, {
+  city: string; neighborhood: string; subtitle: string;
+  anchor: string; anchorType: string;
+  accent: string; iconColor: string;
+  coName: string; coTier: number;
+}> = {
+  'depok-margonda-001': {
+    city: 'Depok',
+    neighborhood: 'Beji, Depok',
+    subtitle: 'UI Gate — Margo City',
+    anchor: 'Universitas Indonesia + Margo City Mall',
+    anchorType: 'University + Mall',
+    accent: '#E6F3EF',
+    iconColor: '#1B7A65',
+    coName: 'Rizky F.',
+    coTier: 3,
+  },
+};
+
+function hoursAgo(isoDate: string): number {
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / (1000 * 60 * 60));
+}
+
+function mapApiToClusterData(c: ApiCluster): ClusterData {
+  const meta = CLUSTER_DISPLAY_META[c.slug] ?? {
+    city: 'Indonesia',
+    neighborhood: c.anchorLabel,
+    subtitle: c.anchorLabel,
+    anchor: c.anchorLabel,
+    anchorType: 'Landmark',
+    accent: '#E6F3EF',
+    iconColor: '#1B7A65',
+    coName: 'CO',
+    coTier: 1,
+  };
+  const ks = c.keyStats;
+
+  return {
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    subtitle: meta.subtitle,
+    anchor: meta.anchor,
+    anchorType: meta.anchorType,
+    city: meta.city,
+    neighborhood: meta.neighborhood,
+    lat: c.anchorLat,
+    lng: c.anchorLng,
+    freshness: hoursAgo(c.updatedAt),
+    confidence: c.confidenceScore,
+    zkPoints: c.totalValidatedFields,
+    status: c.status === 'ACTIVE' ? 'Active' : 'Seeding',
+    completeness: c.dataCompleteness,
+    categories: ks.categories.length > 0 ? ks.categories : ['F&B'],
+    priceRange: ks.priceRangeLabel
+      ? { cafe: ks.priceRangeLabel }
+      : {},
+    traffic: ks.trafficLevel,
+    saturation: ks.saturationLevel,
+    coName: meta.coName,
+    coTier: meta.coTier,
+    coScore: 85,
+    accent: meta.accent,
+    iconColor: meta.iconColor,
+    keyStats: {
+      priceCeiling: ks.priceCeiling ?? 0,
+      willingness: ks.willingness ?? 0,
+      digitalPayment: ks.digitalPayment ?? 0,
+      peakHour: ks.peakHour ?? '—',
+      dominantAge: ks.dominantAge ?? '—',
+      halal: ks.halal ?? 0,
+    },
+    tier1Fields: [],
+  };
+}
 import { Badge } from '@/components/ui/Badge';
 import { InputField } from '@/components/ui/InputField';
 import { ConfidenceRing } from '@/components/ui/ConfidenceRing';
@@ -27,9 +125,11 @@ const SECTION_ICONS: Record<string, React.ReactNode> = {
 
 export default function BOClustersPage() {
   const [view, setView] = useState<View>('list');
-  const [selected, setSelected] = useState<typeof CLUSTERS[0] | null>(null);
+  const [selected, setSelected] = useState<ClusterData | null>(null);
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
+  const [clusters, setClusters] = useState<ClusterData[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const cities = [
     { id: 'all', label: 'Semua' },
@@ -39,14 +139,39 @@ export default function BOClustersPage() {
     { id: 'Surabaya', label: 'Surabaya' },
   ];
 
-  const filtered = CLUSTERS.filter(c => {
+  useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    fetch('/api/clusters', { signal: controller.signal })
+      .then(r => r.json())
+      .then((data: ApiCluster[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setClusters(data.map(mapApiToClusterData));
+        } else {
+          // API returned error object or empty — fall back to mock
+          setClusters(CLUSTERS);
+        }
+      })
+      .catch(() => {
+        setClusters(CLUSTERS);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
+
+    return () => { clearTimeout(timeout); controller.abort(); };
+  }, []);
+
+  const filtered = clusters.filter(c => {
     const q = search.toLowerCase();
     const mq = !q || c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q);
     const mc = cityFilter === 'all' || c.city === cityFilter;
     return mq && mc;
   });
 
-  const goTo = (v: View, cluster?: typeof CLUSTERS[0]) => {
+  const goTo = (v: View, cluster?: ClusterData) => {
     if (cluster) setSelected(cluster);
     setView(v);
   };
@@ -76,17 +201,25 @@ export default function BOClustersPage() {
           ))}
         </div>
       </div>
-      <div style={{ fontSize: 12, color: T.g500, marginBottom: 16 }}>{filtered.length} cluster ditemukan</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 18 }}>
-        {filtered.map((c, i) => (
-          <ClusterCard key={c.id} cluster={c} onSelect={() => goTo('detail', c)} delay={i * 60} />
-        ))}
-      </div>
+      {loading ? (
+        <div style={{ fontSize: 13, color: T.g500, padding: '32px 0', textAlign: 'center' }}>
+          Memuat data cluster...
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 12, color: T.g500, marginBottom: 16 }}>{filtered.length} cluster ditemukan</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 18 }}>
+            {filtered.map((c, i) => (
+              <ClusterCard key={c.id} cluster={c} onSelect={() => goTo('detail', c)} delay={i * 60} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function ClusterCard({ cluster: c, onSelect, delay }: { cluster: typeof CLUSTERS[0]; onSelect: () => void; delay: number }) {
+function ClusterCard({ cluster: c, onSelect, delay }: { cluster: ClusterData; onSelect: () => void; delay: number }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
@@ -134,7 +267,7 @@ function ClusterCard({ cluster: c, onSelect, delay }: { cluster: typeof CLUSTERS
   );
 }
 
-function BOClusterDetail({ cluster: c, onBack, onChat, onSkipToReport }: { cluster: typeof CLUSTERS[0]; onBack: () => void; onChat: () => void; onSkipToReport: () => void }) {
+function BOClusterDetail({ cluster: c, onBack, onChat, onSkipToReport }: { cluster: ClusterData; onBack: () => void; onChat: () => void; onSkipToReport: () => void }) {
   const [tab, setTab] = useState('overview');
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -311,7 +444,7 @@ function BOClusterDetail({ cluster: c, onBack, onChat, onSkipToReport }: { clust
   );
 }
 
-function BOChat({ cluster: c, onBack, onPaywall }: { cluster: typeof CLUSTERS[0]; onBack: () => void; onPaywall: () => void }) {
+function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBack: () => void; onPaywall: () => void }) {
   const [msgs, setMsgs] = useState<Array<{ id: number; role: 'ai' | 'user'; text: string; cta: boolean }>>([{
     id: 0, role: 'ai',
     text: `Halo! Saya asisten LOKAL untuk cluster **${c.name}**. Tanya apa saja tentang area ini. Kamu punya **7 pesan gratis**.`,
@@ -444,7 +577,7 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: typeof CLUSTERS[0]
   );
 }
 
-function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: typeof CLUSTERS[0]; onClose: () => void; onContinue: () => void }) {
+function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; onClose: () => void; onContinue: () => void }) {
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
       <div style={{ background: T.c50, borderRadius: 24, padding: '36px', maxWidth: 460, width: '100%', boxShadow: '0 16px 48px rgba(26,26,26,0.15)' }}>
@@ -485,7 +618,7 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: typeof CLUSTE
   );
 }
 
-function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: typeof CLUSTERS[0]; onBack: () => void; onSubmit: () => void }) {
+function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: ClusterData; onBack: () => void; onSubmit: () => void }) {
   const [step, setStep] = useState(0);
   const [sub, setSub] = useState('');
   const [name, setName] = useState('');
@@ -597,7 +730,7 @@ function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: typeof CLUST
   );
 }
 
-function BOReport({ cluster: c, onBack }: { cluster: typeof CLUSTERS[0]; onBack: () => void }) {
+function BOReport({ cluster: c, onBack }: { cluster: ClusterData; onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [progLabel, setProgLabel] = useState('Menganalisis data cluster...');

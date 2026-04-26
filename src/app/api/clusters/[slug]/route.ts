@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { deriveClusterStats } from "@/lib/utils/clusterStats";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export async function GET(
             fieldHash: true,
             solTxSignature: true,
             validatedAt: true,
-            // value intentionally excluded — raw field data is never public
+            value: true, // included for stats derivation, stripped before returning
           },
           orderBy: { fieldCode: "asc" },
         },
@@ -72,7 +73,16 @@ export async function GET(
       );
     }
 
-    // Compute per-category breakdown for the UI (no extra DB query needed)
+    // Derive stats from all field values (not just validated)
+    const keyStats = deriveClusterStats(
+      cluster.fieldValues.map((f) => ({
+        fieldCode: f.fieldCode,
+        value: f.value,
+        status: f.status,
+      }))
+    );
+
+    // Compute per-category breakdown (no extra DB query needed)
     const categoryBreakdown = cluster.fieldValues.reduce<
       Record<string, { total: number; validated: number }>
     >((acc, f) => {
@@ -82,8 +92,19 @@ export async function GET(
       return acc;
     }, {});
 
+    // Strip raw value from fieldValues before returning — raw field data is never public
+    const publicFieldValues = cluster.fieldValues.map(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ({ value: _v, ...publicFields }) => publicFields
+    );
+
     return NextResponse.json(
-      { ...cluster, categoryBreakdown },
+      {
+        ...cluster,
+        fieldValues: publicFieldValues,
+        categoryBreakdown,
+        keyStats,
+      },
       {
         headers: {
           "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
