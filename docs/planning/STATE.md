@@ -60,7 +60,7 @@
 
 | Ticket | Title | Owner | Status | Blocker / Notes |
 |--------|-------|-------|--------|-----------------|
-| T-14 | Cluster API Routes | Daffa | PENDING | Needs T-01, T-04 |
+| T-14 | Cluster API Routes | Daffa | DONE | GET /api/clusters + GET /api/clusters/[slug]. Slug validation, no raw values exposed, categoryBreakdown computed server-side, Cache-Control headers set. |
 | T-15 | Seed Margonda 20 Tier 1 Fields | Dylan | PENDING | Needs T-01, T-04, T-07 |
 | T-16 | Admin Field Validation API | Dylan | PENDING | Needs T-01, T-10, T-13 |
 | T-17 | Cluster Browser + Mapbox | Daffa | PENDING | Needs T-06, T-14 |
@@ -68,7 +68,7 @@
 | T-19 | Free Chat UI | Daffa | PENDING | Needs T-06, T-17, T-18 |
 | T-20 | Admin Field Review UI | Daffa | PENDING | Needs T-06, T-16 |
 
-**Phase 3 Progress:** 0 / 7 tickets done
+**Phase 3 Progress:** 1 / 7 tickets done
 
 ---
 
