@@ -70,7 +70,7 @@ export default async function BOHistoryPage() {
                     </div>
                   </div>
                   <div style={{ width: 1, height: 40, background: T.c200 }} />
-                  <Link href={`/dashboard/session/${s.id}`} style={{
+                  <Link href={`/session/${s.id}`} style={{
                     display: 'flex', alignItems: 'center', gap: 8, background: T.g900, borderRadius: 12, padding: '12px 20px',
                     fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', transition: 'all 200ms',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -119,7 +119,7 @@ export default async function BOHistoryPage() {
                   </div>
                   
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/dashboard/session/${s.id}`} style={{
+                    <Link href={`/session/${s.id}`} style={{
                       display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: `1px solid ${T.c200}`,
                       borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 600, color: T.g900, textDecoration: 'none'
                     }}>
