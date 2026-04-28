@@ -15,6 +15,15 @@ interface StreamCallbacks {
   onDone: () => void;
 }
 
+export type Persona = 'motivated' | 'realistic' | 'strategic' | 'free';
+
+export const PERSONA_CONFIGS: Record<Persona, { temperature: number; topP: number; maxTokens: number }> = {
+  motivated:  { temperature: 0.85, topP: 0.95, maxTokens: 1200 },
+  realistic:  { temperature: 0.35, topP: 0.80, maxTokens: 1000 },
+  strategic:  { temperature: 0.55, topP: 0.90, maxTokens: 1400 },
+  free:       { temperature: 0.65, topP: 0.90, maxTokens:  800 },
+};
+
 const GROQ_BASE = 'https://api.groq.com/openai';
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 
@@ -73,15 +82,20 @@ export async function callAnthropicStream(
   messages: AnthropicMessage[],
   maxTokens = 800,
   temperature = 0.65,
+  topP?: number,
+  persona?: Persona,
 ): Promise<Response> {
+  const config = persona ? PERSONA_CONFIGS[persona] : { maxTokens, temperature, topP };
+
   const res = await fetch(`${GROQ_BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify({
       model: model(),
       messages: buildMessages(systemPrompt, messages),
-      max_tokens: maxTokens,
-      temperature,
+      max_tokens: config.maxTokens,
+      temperature: config.temperature,
+      ...(config.topP !== undefined && { top_p: config.topP }),
       stream: true,
     }),
   });

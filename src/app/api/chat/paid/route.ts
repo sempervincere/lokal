@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
-import { buildPaidChatSystemPrompt } from '@/lib/ai/freeChat';
-import { callAnthropicStream, readAnthropicStream } from '@/lib/ai/anthropicClient';
+import { buildPaidChatSystemPrompt, buildPersonaPrefix } from '@/lib/ai/freeChat';
+import { callAnthropicStream, readAnthropicStream, Persona } from '@/lib/ai/anthropicClient';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,10 +14,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { clusterId, sessionId, messages } = body as {
+    const { clusterId, sessionId, messages, persona } = body as {
       clusterId: string;
       sessionId?: string;
       messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+      persona?: Persona;
     };
 
     if (!clusterId || !Array.isArray(messages)) {
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
 
     const menuItems = (conceptForm.menuItems as Array<{ name: string; price: number; description?: string }>) ?? [];
 
-    const systemPrompt = await buildPaidChatSystemPrompt(
+    const personaPrefix = buildPersonaPrefix(persona ?? 'realistic');
+    const systemPrompt = personaPrefix + '\n\n' + await buildPaidChatSystemPrompt(
       clusterId,
       {
         fbSubcategory: conceptForm.fbSubcategory,
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     let aiRes: Response;
     try {
-      aiRes = await callAnthropicStream(systemPrompt, messages, 800, 0.65);
+      aiRes = await callAnthropicStream(systemPrompt, messages, 800, 0.65, undefined, persona ?? 'realistic');
     } catch (err) {
       console.error('[paid chat] AI call failed:', err);
       return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 });

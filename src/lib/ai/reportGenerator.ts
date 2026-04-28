@@ -36,13 +36,12 @@ ${menuLines}
 
 ## Instruksi Generate Laporan
 
-Hasilkan laporan dalam format JSON dengan tepat 10 section. Setiap section harus SUBSTANTIF dan SPESIFIK untuk konsep ini di cluster ini — bukan generik.
+Hasilkan laporan dalam format JSON dengan tepat 10 section. Setiap section harus SUBSTANTIF dan SPESIFIK untuk konsep ini di cluster ini — bukan generik. Setiap keyPoints HARUS minimum 4-5 poin, berupa kalimat lengkap dengan angka spesifik dari data, dan TIDAK menyebut kode field (seperti B1, M1, dll). Bahasa Indonesia profesional.
 
 **CRITICAL — Section 6 (Pricing Strategy):**
 Untuk setiap item menu, bandingkan harganya dengan price ceiling dari data B1/M2. Jika harga item >30% di atas price ceiling kategorinya:
 - Wajib masukkan ke array \`riskFlags\`
 - Format: "Item [nama] (Rp [harga]) berada [X]% di atas price ceiling [kategori] di cluster ini (Rp [ceiling]). Risiko konversi sangat tinggi."
-- Ini adalah momen kunci laporan — jangan lewatkan satu item pun
 
 Format JSON yang diperlukan:
 \`\`\`json
@@ -50,72 +49,75 @@ Format JSON yang diperlukan:
   "section1": {
     "title": "Executive Summary",
     "summary": "...",
-    "keyPoints": ["...", "...", "..."],
-    "data": {}
+    "keyPoints": ["...", "...", "...", "...", "..."],
+    "data": { "topInsights": ["..."], "recommendation": "..." }
   },
   "section2": {
     "title": "Profil Pelanggan",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "ageDistribution": {}, "incomeDistribution": {}, "behavioralInsights": [] }
+    "keyPoints": ["...", "...", "...", "...", "..."],
+    "data": { "ageDistribution": {}, "incomeDistribution": {}, "behavioralInsights": ["..."], "psychographics": ["..."] }
   },
   "section3": {
     "title": "Market Sizing",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "footTraffic": "...", "estimatedTAM": "...", "captureRate": "..." }
+    "keyPoints": ["...", "...", "...", "..."],
+    "data": { "footTraffic": "...", "estimatedTAM": "...", "captureRate": "...", "servicableMarket": "..." }
   },
   "section4": {
     "title": "Competitive Landscape",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "topCompetitors": [], "saturationLevel": "...", "marketGap": "..." }
+    "keyPoints": ["...", "...", "...", "...", "..."],
+    "data": { "topCompetitors": [{"name": "...", "strength": "...", "weakness": "...", "pricePoint": "..."}], "saturationLevel": "...", "marketGap": "...", "competitorMatrix": "..." }
   },
   "section5": {
     "title": "Location Intelligence",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "anchorPoints": [], "accessScore": 0, "footTrafficPattern": "..." }
+    "keyPoints": ["...", "...", "...", "..."],
+    "data": { "anchorPoints": [{"name": "...", "distance": "...", "trafficImpact": "..."}], "accessScore": 0, "footTrafficPattern": "...", "locationRisks": ["..."] }
   },
   "section6": {
     "title": "Strategi Harga",
     "summary": "...",
-    "keyPoints": ["...", "..."],
+    "keyPoints": ["...", "...", "...", "...", "..."],
     "riskFlags": [],
     "priceSweet": 0,
     "priceCeiling": 0,
-    "data": { "recommendations": [], "pricingRationale": "..." }
+    "data": { "menuPriceAnalysis": [{"item": "...", "price": 0, "ceiling": 0, "status": "...", "advice": "..."}], "recommendations": ["...", "...", "..."], "pricingRationale": "..." }
   },
   "section7": {
     "title": "Product-Market Fit",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "fitScore": 0, "fitRationale": "...", "strengthFactors": [], "riskFactors": [] }
+    "keyPoints": ["...", "...", "...", "...", "..."],
+    "data": { "fitScore": 0, "fitRationale": "...", "strengthFactors": ["..."], "riskFactors": ["..."], "improvementActions": ["..."] }
   },
   "section8": {
     "title": "Go-to-Market Playbook",
     "summary": "...",
-    "keyPoints": ["...", "..."],
-    "data": { "launchStrategy": [], "channelRecommendations": [], "quickWins": [] }
+    "keyPoints": ["...", "...", "...", "...", "..."],
+    "data": { "launchStrategy": [{"week": "...", "action": "...", "owner": "...", "metric": "..."}], "channelRecommendations": [{"channel": "...", "rationale": "...", "priority": "..."}], "quickWins": ["..."], "budget30Days": "..." }
   },
   "section9": {
     "title": "Risk Register",
     "summary": "...",
-    "keyPoints": ["...", "..."],
+    "keyPoints": ["...", "...", "...", "..."],
     "data": {
       "risks": [
-        { "risk": "...", "severity": "HIGH|MED|LOW", "mitigation": "..." }
+        { "risk": "...", "severity": "HIGH|MED|LOW", "probability": "...", "mitigation": "...", "contingency": "..." }
       ]
     }
   },
   "section10": {
     "title": "Skenario Finansial",
     "summary": "...",
-    "keyPoints": ["...", "..."],
+    "keyPoints": ["...", "...", "...", "..."],
     "data": {
-      "pessimistic": { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "..." },
-      "realistic":   { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "..." },
-      "optimistic":  { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "..." }
+      "assumptions": ["..."],
+      "pessimistic": { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "...", "assumptions": "..." },
+      "realistic":   { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "...", "assumptions": "..." },
+      "optimistic":  { "monthlyRevenue": 0, "monthlyProfit": 0, "breakeven": "...", "assumptions": "..." },
+      "breakeven": "...",
+      "capitalRequired": "..."
     }
   }
 }
@@ -188,8 +190,8 @@ export async function generateReport(sessionId: string): Promise<void> {
     let rawContent: string = await callAnthropicSync(
       'You are a senior F&B business analyst. Respond with pure JSON only, no markdown fences.',
       [{ role: 'user', content: prompt }],
-      7500,
-      0.3,
+      8000,
+      0.4,
     );
 
     // Strip markdown fences if present

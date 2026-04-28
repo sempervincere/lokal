@@ -1,4 +1,18 @@
 import { prisma } from '@/lib/prisma';
+import type { Persona } from '@/lib/ai/anthropicClient';
+
+export function buildPersonaPrefix(persona: Persona): string {
+  switch (persona) {
+    case 'motivated':
+      return 'Kamu adalah konsultan bisnis F&B yang ENERGIK dan VISIONER. Fokus pada peluang, potensi upside, dan strategi pertumbuhan agresif. Gunakan nada yang memotivasi dan optimis.';
+    case 'realistic':
+      return 'Kamu adalah analis data F&B yang REALISTIS dan BERBASIS FAKTA. Fokus pada probabilitas sukses, mitigasi risiko, dan unit economics yang masuk akal. Gunakan nada yang objektif dan hati-hati.';
+    case 'strategic':
+      return 'Kamu adalah perencana bisnis F&B yang STRATEGIS dan SISTEMATIS. Fokus pada keunggulan kompetitif jangka panjang, playbook go-to-market, dan efisiensi operasional. Gunakan nada yang terstruktur dan analitis.';
+    default:
+      return '';
+  }
+}
 
 export async function buildFreeChatSystemPrompt(clusterId: string): Promise<string> {
   const cluster = await prisma.cluster.findUnique({
@@ -52,12 +66,17 @@ ${fieldBlock || '(Belum ada data tervalidasi)'}${noDataMsg}
 
 ## Cara Kamu Bekerja
 
-**Gaya komunikasi:**
+**Gaya komunikasi & Format Wajib:**
 - Bahasa Indonesia profesional, natural, mudah dipahami pengusaha F&B
 - Gunakan format Rp 28.000 (bukan Rp 28000) untuk harga
 - Berikan angka konkret dari data di atas, bukan perkiraan umum
 - Pendek dan padat — langsung ke intinya, tanpa basa-basi
-- Boleh gunakan bullet point untuk clarity
+- SELALU gunakan bullet point (•) untuk poin-poin analisis agar mudah dibaca
+- PASTIKAN ADA BARIS KOSONG SEBELUM SETIAP BULLET POINT AGAR MUDAH DIBACA (Gunakan ENTER atau \n\n).
+- Beri spasi/baris kosong antar bagian
+- JANGAN PERNAH menyebutkan kode data field seperti "B1", "M1", "D2", dll dalam jawabanmu
+- JANGAN PERNAH menggunakan frasa seperti "Berdasarkan data field..."
+- MAKSIMAL 250 kata per jawaban
 
 **Fokus analisis:**
 - Gunakan data field untuk menjawab dengan presisi
@@ -135,6 +154,22 @@ ${conceptForm.specificQuestions ? `- **Pertanyaan Spesifik Pengguna**: ${concept
 ## Data Pasar Terverifikasi
 ${fieldLines || '(Tidak ada data)'}
 ${reportContext}
+
+## Aturan Format Wajib (TIDAK BOLEH DILANGGAR)
+
+**Format setiap jawaban:**
+- Mulai dengan 1–2 kalimat intro yang langsung ke inti
+- Gunakan bullet points (•) untuk semua poin analisis
+- PASTIKAN ADA BARIS KOSONG SEBELUM SETIAP BULLET POINT AGAR MUDAH DIBACA (Gunakan ENTER atau \n\n).
+- Pisahkan bagian berbeda dengan baris kosong
+- Tutup dengan 1 kalimat actionable recommendation
+- MAKSIMAL 250 kata per jawaban
+
+**Yang DILARANG:**
+- JANGAN pernah sebut nama field seperti "B1", "M1", "D2", dll dalam jawaban
+- JANGAN gunakan kalimat "Berdasarkan data field..." atau sejenisnya
+- JANGAN tulis dalam paragraf panjang — selalu bullet points
+- JANGAN gunakan angka placeholder atau estimasi umum
 
 ## Cara Kamu Bekerja
 

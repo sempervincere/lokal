@@ -3,18 +3,12 @@
 import { useState } from 'react';
 import { T } from '@/lib/constants/mock-data';
 
-interface InputFieldProps {
-  placeholder?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  type?: string;
+interface InputFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   prefix?: React.ReactNode;
   suffix?: React.ReactNode;
-  style?: React.CSSProperties;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
-export function InputField({ placeholder, value, onChange, type = 'text', prefix, suffix, style = {}, onKeyDown }: InputFieldProps) {
+export function InputField({ prefix, suffix, style = {}, ...props }: InputFieldProps) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{
@@ -31,13 +25,15 @@ export function InputField({ placeholder, value, onChange, type = 'text', prefix
     }}>
       {prefix && prefix}
       <input
-        value={value}
-        onChange={onChange}
-        type={type}
-        placeholder={placeholder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onKeyDown={onKeyDown}
+        {...props}
+        onFocus={(e) => {
+          setFocused(true);
+          props.onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setFocused(false);
+          props.onBlur?.(e);
+        }}
         style={{
           flex: 1,
           border: 'none',

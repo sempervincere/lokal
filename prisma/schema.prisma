@@ -17,6 +17,13 @@ enum UserRole {
   ADMIN
 }
 
+enum SubsType {
+  FREE
+  EXPLORER
+  OPERATOR
+  AGENCY
+}
+
 enum ClusterStatus {
   SEEDING
   ACTIVE
@@ -59,6 +66,15 @@ model User {
   fullName      String   @map("full_name")
   role          UserRole @default(BUSINESS_OWNER)
   walletAddress String?  @unique @map("wallet_address")
+  
+  companyName   String?  @map("company_name")
+  phoneNumber   String?  @map("phone_number")
+  jobTitle      String?  @map("job_title")
+  
+  credits       Int      @default(0)
+  isSubs        Boolean  @default(false) @map("is_subs")
+  subsType      SubsType @default(FREE) @map("subs_type")
+
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Activity, MapPin, FileText, CreditCard, Wallet, LogOut } from 'lucide-react';
+import { Activity, MapPin, FileText, CreditCard, Wallet, LogOut, User } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: 'clusters',     href: '/dashboard/clusters',     icon: MapPin,     label: 'Clusters' },
   { id: 'history',      href: '/dashboard/history',      icon: FileText,   label: 'Riwayat Simulasi' },
   { id: 'subscription', href: '/dashboard/subscription', icon: CreditCard, label: 'Langganan' },
+  { id: 'profile',      href: '/dashboard/profile',      icon: User,       label: 'Profil' },
 ];
 
 // Exact match for /dashboard, prefix match for all others
