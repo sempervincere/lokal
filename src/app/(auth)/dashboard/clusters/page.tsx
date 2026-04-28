@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check } from 'lucide-react';
-import { T, CLUSTERS, ClusterData, REPORT_SECTIONS, MENU_ITEMS } from '@/lib/constants/mock-data';
+import { T, CLUSTERS, ClusterData } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
 import type { ClusterKeyStats } from '@/lib/utils/clusterStats';
 
@@ -107,25 +107,15 @@ import { InputField } from '@/components/ui/InputField';
 import { ConfidenceRing } from '@/components/ui/ConfidenceRing';
 import { MapPlaceholder } from '@/components/ui/MapPlaceholder';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { SectionExpander } from '@/components/ui/SectionExpander';
 import { StepsProgress } from '@/components/ui/StepsProgress';
 
-type View = 'list' | 'detail' | 'chat' | 'paywall' | 'form' | 'report';
+type View = 'list' | 'detail' | 'chat' | 'paywall' | 'form' | 'report' | 'consultation';
 
-const SECTION_ICONS: Record<string, React.ReactNode> = {
-  BarChart2: <BarChart2 size={16} color={T.p600} />,
-  Users: <Users size={16} color={T.p600} />,
-  DollarSign: <span style={{ fontSize: 16, color: T.p600 }}>$</span>,
-  MapPin: <span style={{ fontSize: 16, color: T.p600 }}>📍</span>,
-  TrendingDown: <TrendingDown size={16} color={T.p600} />,
-  Star: <span style={{ fontSize: 16 }}>⭐</span>,
-  Sparkles: <Sparkles size={16} color={T.p600} />,
-  AlertTriangle: <span style={{ fontSize: 16 }}>⚠️</span>,
-};
 
 export default function BOClustersPage() {
   const [view, setView] = useState<View>('list');
   const [selected, setSelected] = useState<ClusterData | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('all');
   const [clusters, setClusters] = useState<ClusterData[]>([]);
@@ -176,8 +166,9 @@ export default function BOClustersPage() {
     setView(v);
   };
 
-  if (view === 'report' && selected) return <BOReport cluster={selected} onBack={() => setView('list')} />;
-  if (view === 'form' && selected) return <BOConceptForm cluster={selected} onBack={() => setView('detail')} onSubmit={() => setView('report')} />;
+  if (view === 'consultation' && selected) return <BOConsultationChat cluster={selected} sessionId={sessionId} onBack={() => setView('report')} />;
+  if (view === 'report' && selected) return <BOReport cluster={selected} sessionId={sessionId} onBack={() => setView('list')} onStartConsultation={() => setView('consultation')} />;
+  if (view === 'form' && selected) return <BOConceptForm cluster={selected} onBack={() => setView('detail')} onSubmit={(sid) => { setSessionId(sid); setView('report'); }} />;
   if (view === 'paywall' && selected) return <BOPaywall cluster={selected} onClose={() => setView('detail')} onContinue={() => setView('form')} />;
   if (view === 'chat' && selected) return <BOChat cluster={selected} onBack={() => setView('detail')} onPaywall={() => setView('paywall')} />;
   if (view === 'detail' && selected) return <BOClusterDetail cluster={selected} onBack={() => setView('list')} onChat={() => setView('chat')} onSkipToReport={() => setView('paywall')} />;
@@ -404,21 +395,21 @@ function BOClusterDetail({ cluster: c, onBack, onChat, onSkipToReport }: { clust
               Chat gratis 7 pesan dengan AI konsultan. Setelah itu, buka laporan simulasi penuh.
             </p>
             <Button full icon={<MessageCircle size={15} color={T.c50} />} onClick={onChat} style={{ marginBottom: 8 }}>
-              Chat Gratis Sekarang
+              Coba Chat Gratis (7 Pesan)
             </Button>
             <div style={{ textAlign: 'center', fontSize: 12, color: T.g500, marginBottom: 10 }}>
-              7 pesan gratis · Tidak perlu pembayaran
+              7 pesan gratis · Tidak perlu kartu kredit
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 16px' }}>
               <div style={{ flex: 1, height: 1, background: T.c200 }} />
-              <span style={{ fontSize: 11, color: T.g500, fontWeight: 600 }}>atau</span>
+              <span style={{ fontSize: 11, color: T.g500, fontWeight: 600 }}>atau langsung</span>
               <div style={{ flex: 1, height: 1, background: T.c200 }} />
             </div>
             <Button full variant="accent" icon={<Sparkles size={15} color={T.c50} />} onClick={onSkipToReport} style={{ marginBottom: 6 }}>
-              Langsung Generate Laporan
+              Beli Laporan Penuh — Rp 400.000
             </Button>
             <div style={{ textAlign: 'center', fontSize: 11, color: T.g500, marginBottom: 16 }}>
-              Rp 400.000 · Laporan 10 seksi + 12 jam konsultasi
+              Bayar dulu · Isi konsep · Laporan 10 seksi + 12 jam konsultasi
             </div>
 
             {/* Report includes */}
@@ -447,36 +438,111 @@ function BOClusterDetail({ cluster: c, onBack, onChat, onSkipToReport }: { clust
 function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBack: () => void; onPaywall: () => void }) {
   const [msgs, setMsgs] = useState<Array<{ id: number; role: 'ai' | 'user'; text: string; cta: boolean }>>([{
     id: 0, role: 'ai',
-    text: `Halo! Saya asisten LOKAL untuk cluster **${c.name}**. Tanya apa saja tentang area ini. Kamu punya **7 pesan gratis**.`,
+    text: `Halo! Saya konsultan AI LOKAL untuk cluster **${c.name}**. Tanya apa saja tentang pasar F&B di area ini. Kamu punya **7 pesan gratis**.`,
     cta: false,
   }]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [used, setUsed] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(true);
   const MAX = 7;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const AI_RESPONSES = [
-    `Harga rata-rata kopi di ${c.name} berkisar **Rp ${(c.keyStats.willingness / 1000).toFixed(0)}.000–${(c.keyStats.priceCeiling / 1000).toFixed(0)}.000**. Price ceiling terverifikasi: **Rp ${(c.keyStats.priceCeiling / 1000).toFixed(0)}.000**.`,
-    `Segmen dominan adalah **${c.keyStats.dominantAge}**. Digital payment adoption: **${c.keyStats.digitalPayment}%**. GoPay dan OVO paling populer.`,
-    `Traffic peak di cluster ini: **${c.keyStats.peakHour}**. Level traffic keseluruhan: **${c.traffic}**.`,
-    `Saturasi pasar: **${c.saturation}**. Ada gap di specialty coffee lokal dengan harga accessible di bawah Rp 32.000.`,
-    `Untuk konsep café, sweet spot harga adalah **Rp ${(c.keyStats.willingness * 0.8 / 1000).toFixed(0)}K–${(c.keyStats.willingness / 1000).toFixed(0)}K**. Di atas itu, konversi turun drastis.`,
-    `Kamu sudah hampir mencapai batas pesan gratis. Buka **laporan simulasi lengkap** untuk analisis 10 seksi + konsultasi 12 jam.`,
-  ];
+  // Fetch real message count from DB on mount
+  useEffect(() => {
+    if (!c.id) { setLoadingCount(false); return; }
+    fetch(`/api/chat?clusterId=${c.id}`)
+      .then(r => r.json())
+      .then(data => { setUsed(data.count ?? 0); })
+      .catch(() => {})
+      .finally(() => setLoadingCount(false));
+  }, [c.id]);
 
-  const send = (text: string) => {
-    if (!text.trim() || typing) return;
-    const nu = used + 1;
-    setUsed(nu);
-    setMsgs(m => [...m, { id: Date.now(), role: 'user', text, cta: false }]);
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [msgs, typing]);
+
+  const send = async (text: string) => {
+    if (!text.trim() || typing || loadingCount) return;
+
+    // Build conversation history for API (exclude initial welcome msg id=0)
+    const history = msgs
+      .filter(m => m.id !== 0)
+      .map(m => ({ role: m.role === 'ai' ? 'assistant' as const : 'user' as const, content: m.text }));
+
+    const newUserMsg = { id: Date.now(), role: 'user' as const, text, cta: false };
+    setMsgs(m => [...m, newUserMsg]);
     setInput('');
-    if (nu >= MAX) { setTimeout(onPaywall, 800); return; }
     setTyping(true);
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clusterId: c.id,
+          messages: [...history, { role: 'user', content: text }],
+        }),
+      });
+
+      if (response.status === 401) {
+        setTyping(false);
+        setMsgs(m => [...m, { id: Date.now(), role: 'ai', text: 'Kamu perlu login untuk menggunakan chat. Silakan login terlebih dahulu.', cta: false }]);
+        return;
+      }
+
+      if (response.status === 402) {
+        setTyping(false);
+        setTimeout(onPaywall, 400);
+        return;
+      }
+
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      // Stream the response
+      const aiMsgId = Date.now() + 1;
       setTyping(false);
-      const resp = AI_RESPONSES[Math.min(nu - 1, AI_RESPONSES.length - 1)];
-      setMsgs(m => [...m, { id: Date.now() + 1, role: 'ai', text: resp, cta: nu >= MAX - 1 }]);
-    }, 1100 + Math.random() * 500);
+      setMsgs(m => [...m, { id: aiMsgId, role: 'ai', text: '', cta: false }]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              setMsgs(m => m.map(msg =>
+                msg.id === aiMsgId ? { ...msg, text: msg.text + parsed.content } : msg
+              ));
+            }
+            if (parsed.done) {
+              const newCount = parsed.count ?? used + 1;
+              setUsed(newCount);
+              if (parsed.isLastFree) {
+                setMsgs(m => m.map(msg =>
+                  msg.id === aiMsgId ? { ...msg, cta: true } : msg
+                ));
+              }
+            }
+          } catch { /* skip malformed chunk */ }
+        }
+      }
+    } catch {
+      setTyping(false);
+      setMsgs(m => [...m, { id: Date.now(), role: 'ai', text: 'Maaf, terjadi kesalahan koneksi. Coba lagi.', cta: false }]);
+    }
   };
 
   const bold = (t: string) => t.split(/\*\*(.*?)\*\*/g).map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p);
@@ -515,7 +581,7 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBac
       <div style={{ padding: '10px 24px', background: T.e100, borderBottom: `1px solid ${T.e500}22`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
         <span style={{ fontSize: 12, color: T.e600, fontWeight: 500 }}>Sudah yakin dengan cluster ini?</span>
         <button onClick={onPaywall} style={{ background: T.e600, border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: T.c50, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Sparkles size={12} color={T.c50} /> Langsung Generate Laporan →
+          <Sparkles size={12} color={T.c50} /> Beli Laporan Penuh →
         </button>
       </div>
 
@@ -544,9 +610,13 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBac
             {[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: T.g500, animation: `bounceDot 1.2s ease ${i * 0.2}s infinite` }} />)}
           </div>
         )}
-        {used === 0 && (
+        {used === 0 && !loadingCount && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-            {['Berapa price ceiling di sini?', 'Siapa kompetitor terkuat?', 'Apakah cocok untuk konsep premium?'].map((s, i) => (
+            {[
+              'Berapa price ceiling untuk konsep café di sini?',
+              'Siapa kompetitor terkuat dan di mana celah pasarnya?',
+              'Apakah konsep premium cocok untuk area ini?',
+            ].map((s, i) => (
               <button key={i} onClick={() => send(s)} style={{ padding: '10px 16px', borderRadius: 10, border: `1px solid ${T.c200}`, background: T.c50, color: T.p600, fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'all 150ms' }}
                 onMouseEnter={e => (e.currentTarget.style.background = T.p100)}
                 onMouseLeave={e => (e.currentTarget.style.background = T.c50)}
@@ -554,21 +624,32 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBac
             ))}
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
       <div style={{ padding: '14px 24px 20px', borderTop: `1px solid ${T.c200}`, flexShrink: 0, background: T.c50 }}>
         {used >= MAX ? (
           <Button variant="accent" full size="lg" onClick={onPaywall} icon={<Lock size={16} color={T.c50} />}>
-            Buka Simulasi Bisnis — Rp 400.000
+            Buka Simulasi Bisnis Lengkap — Rp 400.000
           </Button>
         ) : (
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <InputField placeholder="Tanya tentang cluster ini..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send(input)} />
+              <InputField
+                placeholder={loadingCount ? 'Memuat...' : 'Tanya tentang pasar F&B di cluster ini...'}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+                style={{ opacity: loadingCount ? 0.5 : 1 }}
+              />
             </div>
-            <button onClick={() => send(input)} disabled={!input.trim() || typing} style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: !input.trim() || typing ? T.c200 : T.p600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 150ms' }}>
-              <ArrowRight size={17} color={!input.trim() || typing ? T.g500 : T.c50} />
+            <button
+              onClick={() => send(input)}
+              disabled={!input.trim() || typing || loadingCount}
+              style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: !input.trim() || typing || loadingCount ? T.c200 : T.p600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 150ms' }}
+            >
+              <ArrowRight size={17} color={!input.trim() || typing || loadingCount ? T.g500 : T.c50} />
             </button>
           </div>
         )}
@@ -607,169 +688,435 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; 
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
           <Button variant="ghost" onClick={onClose}>Batal</Button>
           <Button variant="accent" full onClick={onContinue} icon={<ArrowRight size={15} color={T.c50} />}>
-            Isi Konsep & Bayar
+            Bayar Sekarang — Rp 400.000
           </Button>
         </div>
         <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: T.g500 }}>
-          GoPay · OVO · Bank Transfer · Phantom (IDRX)
+          Phantom (IDRX) · Pembayaran on-chain terverifikasi
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 6, fontSize: 11, color: T.g500, lineHeight: 1.5 }}>
+          Setelah pembayaran dikonfirmasi, kamu akan mengisi detail konsep bisnis untuk laporan yang dipersonalisasi.
         </div>
       </div>
     </div>
   );
 }
 
-function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: ClusterData; onBack: () => void; onSubmit: () => void }) {
+function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: ClusterData; onBack: () => void; onSubmit: (sessionId: string) => void }) {
   const [step, setStep] = useState(0);
-  const [sub, setSub] = useState('');
+  const [subs, setSubs] = useState<string[]>([]);  // multi-select categories
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [tier, setTier] = useState('');
   const [target, setTarget] = useState('');
   const [menu, setMenu] = useState([{ name: '', price: '' }]);
   const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const steps = ['Kategori', 'Konsep', 'Menu', 'Detail'];
-  const cats = ['Café / Coffee Shop', 'Restoran (full menu)', 'Bakery / Pastry', 'Minuman Spesial', 'Street Food / Gerobak', 'Cloud Kitchen'];
-  const tiers = [
-    { id: 'budget', l: 'Budget', d: '< Rp 20K rata-rata' },
-    { id: 'mid', l: 'Mid-range', d: 'Rp 20–50K rata-rata' },
-    { id: 'premium', l: 'Premium', d: '> Rp 50K rata-rata' },
+  const steps = ['Kategori', 'Konsep', 'Menu', 'Konfirmasi'];
+  const cats = [
+    { id: 'Café / Coffee Shop', emoji: '☕' },
+    { id: 'Restoran (full menu)', emoji: '🍽️' },
+    { id: 'Bakery / Pastry', emoji: '🥐' },
+    { id: 'Minuman Spesial', emoji: '🧋' },
+    { id: 'Street Food / Gerobak', emoji: '🍢' },
+    { id: 'Cloud Kitchen', emoji: '📦' },
   ];
-  const canNext = [!!sub, !!name && !!tier && !!target, menu.some(m => m.name && m.price), true][step];
-  const upMenu = (i: number, f: string, v: string) => setMenu(m => m.map((it, idx) => idx === i ? { ...it, [f]: v } : it));
+  const tiers = [
+    { id: 'budget', l: 'Budget', d: '< Rp 20K', icon: '💰' },
+    { id: 'mid', l: 'Mid-range', d: 'Rp 20–50K', icon: '💳' },
+    { id: 'premium', l: 'Premium', d: '> Rp 50K', icon: '⭐' },
+  ];
+
+  const toggleCat = (cat: string) => {
+    setSubs(prev => prev.includes(cat) ? prev.filter(s => s !== cat) : [...prev, cat]);
+  };
+
+  const canNext = [
+    subs.length > 0,
+    !!name && !!tier && !!target,
+    menu.some(m => m.name && m.price),
+    true,
+  ][step];
+
+  const upMenu = (i: number, f: string, v: string) =>
+    setMenu(m => m.map((it, idx) => idx === i ? { ...it, [f]: v } : it));
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '20px 32px', borderBottom: `1px solid ${T.c200}`, flexShrink: 0 }}>
-        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.g500, marginBottom: 14, fontFamily: 'inherit' }}>
-          <ChevronLeft size={16} color={T.g500} /> Kembali
-        </button>
-        <div style={{ fontSize: 13, color: T.g500, marginBottom: 12 }}>Cluster: <strong style={{ color: T.g900 }}>{c.name}</strong></div>
+      {/* Header */}
+      <div style={{ padding: '18px 28px', borderBottom: `1px solid ${T.c200}`, flexShrink: 0, background: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <button
+            onClick={() => step > 0 ? setStep(s => s - 1) : onBack()}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: T.g500, fontFamily: 'inherit', padding: '4px 0' }}
+          >
+            <ChevronLeft size={16} color={T.g500} /> Kembali
+          </button>
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: T.p100, borderRadius: 20 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.p600 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: T.p600 }}>{c.name}</span>
+          </div>
+        </div>
         <StepsProgress steps={steps} current={step} />
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', maxWidth: 600 }}>
+
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+
         {step === 0 && (
           <div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: T.g900, margin: '0 0 6px' }}>Kategori F&B</h3>
-            <p style={{ fontSize: 14, color: T.g500, margin: '0 0 20px' }}>Pilih tipe bisnis yang paling sesuai.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {cats.map(cat => (
-                <button key={cat} onClick={() => setSub(cat)} style={{ padding: '13px 16px', borderRadius: 12, border: `1.5px solid ${sub === cat ? T.p600 : T.c200}`, background: sub === cat ? T.p100 : T.c50, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: sub === cat ? 600 : 400, color: sub === cat ? T.p600 : T.g700, textAlign: 'left', transition: 'all 150ms' }}>{cat}</button>
-              ))}
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: T.g900, margin: '0 0 4px' }}>Kategori F&B</h3>
+            <p style={{ fontSize: 13, color: T.g500, margin: '0 0 6px', lineHeight: 1.5 }}>Pilih satu atau lebih tipe bisnis yang relevan.</p>
+            <p style={{ fontSize: 12, color: T.p600, fontWeight: 600, margin: '0 0 20px' }}>
+              {subs.length === 0 ? 'Belum ada yang dipilih' : `${subs.length} dipilih: ${subs.join(', ')}`}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              {cats.map(cat => {
+                const sel = subs.includes(cat.id);
+                return (
+                  <button key={cat.id} onClick={() => toggleCat(cat.id)} style={{
+                    padding: '14px 16px', borderRadius: 14,
+                    border: `2px solid ${sel ? T.p600 : T.c200}`,
+                    background: sel ? T.p100 : T.c50,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'all 150ms', textAlign: 'left',
+                    boxShadow: sel ? `0 0 0 1px ${T.p600}22` : 'none',
+                  }}>
+                    <span style={{ fontSize: 22 }}>{cat.emoji}</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: sel ? 700 : 500, color: sel ? T.p600 : T.g700, lineHeight: 1.3 }}>
+                        {cat.id}
+                      </div>
+                    </div>
+                    {sel && (
+                      <div style={{ marginLeft: 'auto', width: 20, height: 20, borderRadius: '50%', background: T.p600, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={11} color="#fff" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
+
         {step === 1 && (
           <div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: T.g900, margin: '0 0 6px' }}>Detail Konsep</h3>
-            <p style={{ fontSize: 14, color: T.g500, margin: '0 0 20px' }}>Ceritakan tentang konsep kamu.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: T.g900, margin: '0 0 4px' }}>Detail Konsep</h3>
+            <p style={{ fontSize: 13, color: T.g500, margin: '0 0 20px' }}>Deskripsikan konsep bisnis kamu agar laporan lebih akurat.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: T.g700, display: 'block', marginBottom: 6 }}>Nama Konsep</label>
-                <InputField placeholder="contoh: Matcha Corner..." value={name} onChange={e => setName(e.target.value)} />
+                <label style={{ fontSize: 13, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 6 }}>
+                  Nama Konsep <span style={{ color: T.danger }}>*</span>
+                </label>
+                <InputField placeholder="contoh: Matcha Corner, Warung Pak Asep..." value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: T.g700, display: 'block', marginBottom: 8 }}>Positioning Harga</label>
+                <label style={{ fontSize: 13, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 6 }}>
+                  Deskripsi Detail Konsep <span style={{ color: T.danger }}>*</span>
+                </label>
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Ceritakan konsep bisnis kamu secara detail — tema, suasana, keunikan, inspirasi, atau apa yang membedakannya dari kompetitor..."
+                  style={{
+                    width: '100%', padding: '13px 14px', borderRadius: 12,
+                    border: `1.5px solid ${description ? T.p600 : T.c200}`,
+                    background: T.c50, fontFamily: 'inherit', fontSize: 13,
+                    color: T.g900, resize: 'vertical', minHeight: 100,
+                    outline: 'none', lineHeight: 1.6, boxSizing: 'border-box',
+                    transition: 'border-color 150ms',
+                  }}
+                />
+                <div style={{ fontSize: 11, color: T.g500, marginTop: 4 }}>
+                  Semakin detail, semakin akurat simulasi yang dihasilkan AI
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+                  Positioning Harga <span style={{ color: T.danger }}>*</span>
+                </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {tiers.map(t => (
-                    <button key={t.id} onClick={() => setTier(t.id)} style={{ flex: 1, padding: '12px 8px', borderRadius: 12, border: `1.5px solid ${tier === t.id ? T.p600 : T.c200}`, background: tier === t.id ? T.p100 : T.c50, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 150ms' }}>
+                    <button key={t.id} onClick={() => setTier(t.id)} style={{
+                      flex: 1, padding: '14px 8px', borderRadius: 14,
+                      border: `2px solid ${tier === t.id ? T.p600 : T.c200}`,
+                      background: tier === t.id ? T.p100 : T.c50,
+                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 150ms',
+                      textAlign: 'center',
+                    }}>
+                      <div style={{ fontSize: 18, marginBottom: 4 }}>{t.icon}</div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: tier === t.id ? T.p600 : T.g900 }}>{t.l}</div>
-                      <div style={{ fontSize: 11, color: T.g500, marginTop: 3 }}>{t.d}</div>
+                      <div style={{ fontSize: 11, color: T.g500, marginTop: 2 }}>{t.d}</div>
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: T.g700, display: 'block', marginBottom: 6 }}>Target Pelanggan</label>
-                <InputField placeholder="contoh: mahasiswa, karyawan kantoran..." value={target} onChange={e => setTarget(e.target.value)} />
+                <label style={{ fontSize: 13, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 6 }}>
+                  Target Pelanggan <span style={{ color: T.danger }}>*</span>
+                </label>
+                <InputField
+                  placeholder="contoh: mahasiswa UI, karyawan kantoran 25–35 tahun..."
+                  value={target}
+                  onChange={e => setTarget(e.target.value)}
+                />
               </div>
             </div>
           </div>
         )}
+
         {step === 2 && (
           <div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: T.g900, margin: '0 0 6px' }}>Menu Builder</h3>
-            <p style={{ fontSize: 14, color: T.g500, margin: '0 0 20px' }}>Masukkan produk dan harga rencana kamu.</p>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: T.g900, margin: '0 0 4px' }}>Rencana Menu</h3>
+            <p style={{ fontSize: 13, color: T.g500, margin: '0 0 6px' }}>
+              Masukkan produk dan harga rencana kamu. Harga akan dianalisis vs price ceiling cluster ini.
+            </p>
+            <div style={{ padding: '10px 14px', background: T.p100, borderRadius: 10, marginBottom: 18, fontSize: 12, color: T.p600, fontWeight: 500 }}>
+              💡 Price ceiling cluster ini: <strong>Rp {(c.keyStats.priceCeiling / 1000).toFixed(0)}.000</strong> — item di atas angka ini berisiko tinggi
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {menu.map((it, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <div style={{ flex: 2 }}><InputField placeholder="Nama produk" value={it.name} onChange={e => upMenu(i, 'name', e.target.value)} /></div>
-                  <div style={{ flex: 1 }}><InputField placeholder="Rp harga" value={it.price} onChange={e => upMenu(i, 'price', e.target.value.replace(/\D/, ''))} /></div>
-                  {menu.length > 1 && <button onClick={() => setMenu(m => m.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontSize: 18, color: T.danger }}>×</button>}
+                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '12px 14px', background: T.c100, borderRadius: 12 }}>
+                  <div style={{ flex: 2 }}>
+                    <div style={{ fontSize: 11, color: T.g500, fontWeight: 600, marginBottom: 4 }}>NAMA PRODUK</div>
+                    <InputField placeholder="contoh: Matcha Latte, Nasi Goreng..." value={it.name} onChange={e => upMenu(i, 'name', e.target.value)} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: T.g500, fontWeight: 600, marginBottom: 4 }}>HARGA (Rp)</div>
+                    <InputField
+                      placeholder="28000"
+                      value={it.price}
+                      onChange={e => upMenu(i, 'price', e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                  {menu.length > 1 && (
+                    <button
+                      onClick={() => setMenu(m => m.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', color: T.danger, fontSize: 18, marginTop: 16, flexShrink: 0 }}
+                    >×</button>
+                  )}
                 </div>
               ))}
-              <button onClick={() => setMenu(m => [...m, { name: '', price: '' }])} style={{ padding: '12px', borderRadius: 12, border: `2px dashed ${T.c200}`, background: 'transparent', cursor: 'pointer', color: T.g500, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                + Tambah item
+              <button
+                onClick={() => setMenu(m => [...m, { name: '', price: '' }])}
+                style={{ padding: '13px', borderRadius: 12, border: `2px dashed ${T.c200}`, background: 'transparent', cursor: 'pointer', color: T.p600, fontSize: 13, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 150ms' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = T.p600)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = T.c200)}
+              >
+                + Tambah Item Menu
               </button>
             </div>
           </div>
         )}
+
         {step === 3 && (
           <div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: T.g900, margin: '0 0 6px' }}>Pertanyaan Spesifik</h3>
-            <p style={{ fontSize: 14, color: T.g500, margin: '0 0 20px' }}>Ada hal tertentu yang ingin difokuskan? (opsional)</p>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="contoh: Saya khawatir dengan kompetisi chain besar..." style={{ width: '100%', padding: '14px', borderRadius: 12, border: `1.5px solid ${T.c200}`, background: T.c50, fontFamily: 'inherit', fontSize: 14, color: T.g900, resize: 'vertical', minHeight: 120, outline: 'none', lineHeight: 1.6, boxSizing: 'border-box', marginBottom: 20 }} />
-            <div style={{ background: T.p100, borderRadius: 14, padding: '16px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: T.p600, marginBottom: 10 }}>Ringkasan Konsep</div>
-              {[{ l: 'Kategori', v: sub }, { l: 'Nama', v: name }, { l: 'Harga', v: tiers.find(t => t.id === tier)?.l }, { l: 'Target', v: target }, { l: 'Menu', v: `${menu.filter(m => m.name).length} item` }].map(r => (
-                <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                  <span style={{ color: T.g500 }}>{r.l}</span>
-                  <span style={{ color: T.g900, fontWeight: 600 }}>{r.v}</span>
+            <h3 style={{ fontSize: 20, fontWeight: 800, color: T.g900, margin: '0 0 4px' }}>Konfirmasi & Generate</h3>
+            <p style={{ fontSize: 13, color: T.g500, margin: '0 0 20px' }}>Tinjau konsep kamu sebelum laporan digenerate. Tambahkan pertanyaan spesifik jika ada.</p>
+
+            {/* Summary card */}
+            <div style={{ background: T.c100, borderRadius: 16, padding: '18px', marginBottom: 20, border: `1px solid ${T.c200}` }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: T.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Ringkasan Konsep</div>
+              {[
+                { l: 'Kategori', v: subs.join(', ') },
+                { l: 'Nama Konsep', v: name },
+                { l: 'Positioning', v: tiers.find(t => t.id === tier)?.l ?? tier },
+                { l: 'Target', v: target },
+                { l: 'Jumlah Menu', v: `${menu.filter(m => m.name).length} item` },
+              ].map(r => (
+                <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, gap: 12 }}>
+                  <span style={{ color: T.g500, flexShrink: 0 }}>{r.l}</span>
+                  <span style={{ color: T.g900, fontWeight: 600, textAlign: 'right' }}>{r.v}</span>
                 </div>
               ))}
+              {description && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.c200}` }}>
+                  <div style={{ fontSize: 11, color: T.g500, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Deskripsi</div>
+                  <div style={{ fontSize: 13, color: T.g700, lineHeight: 1.5 }}>{description}</div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 6 }}>
+                Pertanyaan Spesifik <span style={{ fontSize: 11, color: T.g500, fontWeight: 400 }}>(opsional)</span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Ada hal tertentu yang ingin difokuskan dalam laporan? contoh: Saya khawatir dengan kompetisi chain besar, atau apakah konsep saya cocok untuk target mahasiswa..."
+                style={{ width: '100%', padding: '13px 14px', borderRadius: 12, border: `1.5px solid ${T.c200}`, background: T.c50, fontFamily: 'inherit', fontSize: 13, color: T.g900, resize: 'vertical', minHeight: 100, outline: 'none', lineHeight: 1.6, boxSizing: 'border-box' }}
+              />
             </div>
           </div>
         )}
       </div>
-      <div style={{ padding: '16px 32px 24px', borderTop: `1px solid ${T.c200}`, display: 'flex', gap: 10, background: T.c50 }}>
-        {step > 0 && <Button variant="secondary" onClick={() => setStep(s => s - 1)}>Kembali</Button>}
-        <Button full={step === 0} disabled={!canNext} variant={step === 3 ? 'accent' : 'primary'} onClick={() => step < 3 ? setStep(s => s + 1) : onSubmit()} icon={step === 3 ? <Lock size={15} color={T.c50} /> : undefined}>
-          {step === 3 ? 'Bayar & Generate Laporan' : 'Lanjut'}
+
+      {/* Footer — only forward action, back is top-left arrow */}
+      <div style={{ padding: '14px 28px 20px', borderTop: `1px solid ${T.c200}`, background: '#fff', flexShrink: 0 }}>
+        {submitError && (
+          <div style={{ marginBottom: 10, padding: '10px 14px', background: '#FEF2F2', borderRadius: 10, fontSize: 12, color: '#EF4444' }}>
+            {submitError}
+          </div>
+        )}
+        <Button
+          full
+          disabled={!canNext || submitting}
+          variant={step === 3 ? 'accent' : 'primary'}
+          onClick={async () => {
+            if (step < 3) { setStep(s => s + 1); return; }
+            setSubmitting(true);
+            setSubmitError(null);
+            try {
+              const validMenuItems = menu
+                .filter(m => m.name.trim() && m.price)
+                .map(m => ({ name: m.name.trim(), price: Number(m.price) }));
+              const res = await fetch('/api/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  clusterId: c.id,
+                  fbSubcategory: subs.join(', '),
+                  conceptName: name,
+                  conceptDescription: `[${tier}] ${description}`,
+                  targetCustomer: target,
+                  specificQuestions: notes || null,
+                  menuItems: validMenuItems,
+                }),
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: 'Gagal membuat sesi' }));
+                throw new Error(err.error ?? 'Gagal membuat sesi');
+              }
+              const { sessionId } = await res.json();
+              onSubmit(sessionId);
+            } catch (err) {
+              setSubmitError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.');
+              setSubmitting(false);
+            }
+          }}
+          icon={step === 3 ? <Sparkles size={15} color={T.c50} /> : <ArrowRight size={15} color={T.c50} />}
+        >
+          {step === 3 ? (submitting ? 'Membuat laporan...' : 'Generate Laporan Sekarang') : 'Lanjut'}
         </Button>
       </div>
     </div>
   );
 }
 
-function BOReport({ cluster: c, onBack }: { cluster: ClusterData; onBack: () => void }) {
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [progLabel, setProgLabel] = useState('Menganalisis data cluster...');
+interface SessionData {
+  id: string;
+  status: string;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  conceptForm: {
+    conceptName: string;
+    fbSubcategory: string;
+    menuItems: Array<{ name: string; price: number; description?: string }>;
+  } | null;
+  report: {
+    id: string;
+    status: string;
+    sections: Record<string, { title: string; summary: string; keyPoints: string[]; riskFlags?: string[]; data?: Record<string, unknown> }> | null;
+    errorMessage: string | null;
+  } | null;
+}
+
+function BOReport({ cluster: c, sessionId, onBack, onStartConsultation }: { cluster: ClusterData; sessionId: string | null; onBack: () => void; onStartConsultation: () => void }) {
+  const [session, setSession] = useState<SessionData | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(43200);
   const [rating, setRating] = useState(0);
+  const [progress, setProgress] = useState(0);
   const progSteps = ['Menganalisis data cluster...', 'Membandingkan harga menu...', 'Memetakan kompetitor...', 'Menyusun proyeksi...', 'Laporan siap!'];
 
-  useEffect(() => {
-    let p = 0;
-    const iv = setInterval(() => {
-      p += 3.5;
-      setProgress(Math.min(p, 100));
-      setProgLabel(progSteps[Math.min(Math.floor(p / 25), 4)]);
-      if (p >= 100) { clearInterval(iv); setTimeout(() => setLoading(false), 400); }
-    }, 70);
-    return () => clearInterval(iv);
-  }, []);
+  const isGenerating = !session || session.status === 'PAYMENT_CONFIRMED' || session.status === 'GENERATING_REPORT' || session.report?.status === 'GENERATING' || session.report?.status === 'PENDING';
+  const isFailed = session?.status === 'FAILED' || session?.report?.status === 'FAILED';
+  const isReady = session?.status === 'ACTIVE' && session.report?.status === 'COMPLETE';
 
+  // Animate progress bar during generation
   useEffect(() => {
-    if (loading) return;
-    const iv = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    if (!isGenerating) return;
+    let p = progress;
+    const iv = setInterval(() => {
+      p = Math.min(p + 1.2, 92);
+      setProgress(p);
+    }, 600);
     return () => clearInterval(iv);
-  }, [loading]);
+  }, [isGenerating]);
+
+  // Poll session status every 3s
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}`);
+        if (!res.ok) { setPollError('Gagal memuat status laporan'); return; }
+        const data: SessionData = await res.json();
+        if (!cancelled) setSession(data);
+        if (!cancelled && (data.status === 'ACTIVE' || data.status === 'FAILED')) return; // stop polling
+        if (!cancelled) setTimeout(poll, 3000);
+      } catch {
+        if (!cancelled) setTimeout(poll, 5000);
+      }
+    };
+
+    poll();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  // Countdown timer once active
+  useEffect(() => {
+    if (!isReady || !session?.expiresAt) return;
+    const end = new Date(session.expiresAt).getTime();
+    const iv = setInterval(() => setTimeLeft(Math.max(0, Math.floor((end - Date.now()) / 1000))), 1000);
+    return () => clearInterval(iv);
+  }, [isReady, session?.expiresAt]);
 
   const fmt = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  if (loading) return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-      <div style={{ width: 64, height: 64, borderRadius: 18, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-        <Sparkles size={32} color={T.p600} />
+  // Loading / generating state
+  if (!isReady && !isFailed) {
+    const progLabel = progSteps[Math.min(Math.floor(progress / 23), 4)];
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+          <Sparkles size={32} color={T.p600} />
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Membuat laporan kamu...</div>
+        <div style={{ fontSize: 13, color: T.g500, marginBottom: 28 }}>{pollError ?? progLabel}</div>
+        <div style={{ width: 320, height: 6, background: T.c200, borderRadius: 9999, overflow: 'hidden', marginBottom: 10 }}>
+          <div style={{ height: '100%', width: `${progress}%`, background: T.p600, borderRadius: 9999, transition: 'width 600ms ease' }} />
+        </div>
+        <div style={{ fontSize: 12, color: T.g500 }}>{Math.round(progress)}%</div>
       </div>
-      <div style={{ fontSize: 17, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Membuat laporan kamu...</div>
-      <div style={{ fontSize: 13, color: T.g500, marginBottom: 28 }}>{progLabel}</div>
-      <div style={{ width: 320, height: 6, background: T.c200, borderRadius: 9999, overflow: 'hidden', marginBottom: 10 }}>
-        <div style={{ height: '100%', width: `${progress}%`, background: T.p600, borderRadius: 9999, transition: 'width 200ms ease' }} />
+    );
+  }
+
+  if (isFailed) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: '#EF4444', marginBottom: 8 }}>Gagal generate laporan</div>
+        <div style={{ fontSize: 13, color: T.g500, marginBottom: 20 }}>{session?.report?.errorMessage ?? 'Terjadi kesalahan. Coba lagi.'}</div>
+        <button onClick={onBack} style={{ padding: '10px 20px', borderRadius: 10, background: T.p600, color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Kembali</button>
       </div>
-      <div style={{ fontSize: 12, color: T.g500 }}>{Math.round(progress)}%</div>
-    </div>
-  );
+    );
+  }
+
+  const sections = session?.report?.sections ?? {};
+  const conceptName = session?.conceptForm?.conceptName ?? 'Konsep Bisnis';
+  const fbSubcategory = session?.conceptForm?.fbSubcategory ?? '';
+  const menuItems = session?.conceptForm?.menuItems ?? [];
+  const priceCeiling = c.keyStats.priceCeiling;
+  const section6 = sections['section6'];
+  const riskFlags: string[] = section6?.riskFlags ?? [];
 
   return (
     <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -786,45 +1133,102 @@ function BOReport({ cluster: c, onBack }: { cluster: ClusterData; onBack: () => 
                 <Clock size={10} color="rgba(255,255,255,0.7)" /> Sesi berakhir dalam: {fmt(timeLeft)}
               </Badge>
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: T.c50, letterSpacing: '-0.01em', margin: '0 0 4px' }}>Kopi Nusantara — Café Specialty</h2>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{c.name} · Café / Coffee Shop</p>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: T.c50, letterSpacing: '-0.01em', margin: '0 0 4px' }}>{conceptName}</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{c.name} · {fbSubcategory}</p>
           </div>
-          <button style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 9999, background: 'rgba(255,255,255,0.1)', border: '1.5px solid rgba(255,255,255,0.2)', color: T.c50, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-            ↓ Unduh PDF
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            <button
+              onClick={onStartConsultation}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '12px 20px', borderRadius: 9999,
+                background: `linear-gradient(135deg, ${T.p600} 0%, #7C3AED 100%)`,
+                border: 'none', color: T.c50,
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                boxShadow: '0 4px 16px rgba(124,58,237,0.4)',
+              }}
+            >
+              <MessageCircle size={16} color={T.c50} />
+              Mulai Konsultasi AI — 12 Jam
+            </button>
+          </div>
         </div>
       </div>
 
       <div style={{ padding: '28px 32px', maxWidth: 900, margin: '0 auto' }}>
-        {/* Menu price analysis */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: T.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Analisis Harga Menu</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12 }}>
-            {MENU_ITEMS.map((item, i) => (
-              <div key={i} style={{ padding: '14px 16px', borderRadius: 14, background: item.status === 'ok' ? T.p100 : item.status === 'warn' ? T.e100 : '#FEF2F2', border: `1px solid ${item.status === 'ok' ? '#C8E8DF' : item.status === 'warn' ? '#F2CAB8' : '#FECACA'}` }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.g900, marginBottom: 4 }}>{item.name}</div>
-                <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 18, fontWeight: 700, color: T.g900, marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>Rp {item.price.toLocaleString('id')}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: item.status === 'ok' ? T.success : item.status === 'warn' ? T.e600 : T.danger }}>{item.note}</div>
-                <div style={{ height: 3, background: 'rgba(0,0,0,0.08)', borderRadius: 9999, marginTop: 8, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min((item.price / item.ceiling) * 100, 100)}%`, background: item.status === 'ok' ? T.success : item.status === 'warn' ? T.e600 : T.danger, borderRadius: 9999 }} />
-                </div>
-                <div style={{ fontSize: 10, color: T.g500, marginTop: 4 }}>Ceiling: Rp {item.ceiling.toLocaleString('id')}</div>
-              </div>
+
+        {/* Risk flags from Section 6 — the money shot */}
+        {riskFlags.length > 0 && (
+          <div style={{ marginBottom: 24, padding: '18px 20px', background: '#FEF2F2', borderRadius: 16, border: '1px solid #FECACA' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#EF4444', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12 }}>⚠️ Peringatan Harga</div>
+            {riskFlags.map((flag, i) => (
+              <div key={i} style={{ fontSize: 13, color: '#991B1B', lineHeight: 1.6, marginBottom: i < riskFlags.length - 1 ? 8 : 0 }}>• {flag}</div>
             ))}
           </div>
-        </div>
+        )}
 
-        {/* 10 sections */}
+        {/* Menu price analysis from actual concept form */}
+        {menuItems.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: T.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Analisis Harga Menu</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12 }}>
+              {menuItems.map((item, i) => {
+                const pct = priceCeiling > 0 ? (item.price / priceCeiling) * 100 : 50;
+                const status = pct <= 100 ? 'ok' : pct <= 130 ? 'warn' : 'danger';
+                const overPct = priceCeiling > 0 ? Math.round(((item.price - priceCeiling) / priceCeiling) * 100) : 0;
+                return (
+                  <div key={i} style={{ padding: '14px 16px', borderRadius: 14, background: status === 'ok' ? T.p100 : status === 'warn' ? T.e100 : '#FEF2F2', border: `1px solid ${status === 'ok' ? '#C8E8DF' : status === 'warn' ? '#F2CAB8' : '#FECACA'}` }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.g900, marginBottom: 4 }}>{item.name}</div>
+                    <div style={{ fontFamily: 'var(--font-mono), monospace', fontSize: 18, fontWeight: 700, color: T.g900, marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>
+                      Rp {item.price.toLocaleString('id')}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: status === 'ok' ? T.success : status === 'warn' ? T.e600 : '#EF4444' }}>
+                      {status === 'ok' ? '✓ Di bawah ceiling' : status === 'warn' ? `↑ ${overPct}% di atas ceiling` : `⚠ ${overPct}% di atas ceiling`}
+                    </div>
+                    <div style={{ height: 3, background: 'rgba(0,0,0,0.08)', borderRadius: 9999, marginTop: 8, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: status === 'ok' ? T.success : status === 'warn' ? T.e600 : '#EF4444', borderRadius: 9999 }} />
+                    </div>
+                    {priceCeiling > 0 && <div style={{ fontSize: 10, color: T.g500, marginTop: 4 }}>Ceiling: Rp {priceCeiling.toLocaleString('id')}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 10 real AI-generated sections */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: T.g500, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>Analisis Lengkap (10 Seksi)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {REPORT_SECTIONS.map((s, i) => (
-              <SectionExpander key={s.id} section={s} delay={i * 60} iconElement={SECTION_ICONS[s.icon] ?? <span style={{ fontSize: 14 }}>📊</span>} />
+            {Object.entries(sections).map(([key, sec], i) => (
+              <RealSectionExpander key={key} sectionKey={key} section={sec} delay={i * 60} />
             ))}
           </div>
         </div>
 
-        {/* Rating */}
+        {/* Consultation CTA banner */}
+        <div style={{
+          background: `linear-gradient(135deg, ${T.g900} 0%, #1e1b4b 100%)`,
+          borderRadius: 20, padding: '24px 28px', marginBottom: 28,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: 16,
+        }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: T.c50, marginBottom: 4 }}>Punya pertanyaan lanjutan?</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, maxWidth: 380 }}>
+              Jendela konsultasi AI 12 jam aktif. Tanya apa saja — strategi lokasi, negosiasi suplier, taktik launch, dll.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80' }} />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Berakhir dalam: {fmt(timeLeft)}</span>
+            </div>
+          </div>
+          <button onClick={onStartConsultation} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px', borderRadius: 9999, background: `linear-gradient(135deg, ${T.p600} 0%, #7C3AED 100%)`, border: 'none', color: T.c50, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 20px rgba(124,58,237,0.5)', flexShrink: 0 }}>
+            <MessageCircle size={17} color={T.c50} />
+            Mulai Konsultasi AI
+          </button>
+        </div>
+
         <div style={{ background: T.c100, borderRadius: 16, padding: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: T.g900 }}>Laporan ini membantu?</div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -833,6 +1237,211 @@ function BOReport({ cluster: c, onBack }: { cluster: ClusterData; onBack: () => 
             ))}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RealSectionExpander({ sectionKey, section, delay }: {
+  sectionKey: string;
+  section: { title: string; summary: string; keyPoints: string[]; riskFlags?: string[]; data?: Record<string, unknown> };
+  delay: number;
+}) {
+  const [open, setOpen] = useState(sectionKey === 'section6');
+  const [vis, setVis] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${T.c200}`, overflow: 'hidden', opacity: vis ? 1 : 0, transform: vis ? 'none' : 'translateY(6px)', transition: `all 300ms ease ${delay}ms` }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+      >
+        <div style={{ width: 32, height: 32, borderRadius: 9, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 14 }}>📊</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{section.title}</div>
+          {!open && <div style={{ fontSize: 12, color: T.g500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 480 }}>{section.summary}</div>}
+        </div>
+        <span style={{ fontSize: 18, color: T.g500, transition: 'transform 200ms', transform: open ? 'rotate(180deg)' : 'none' }}>⌄</span>
+      </button>
+      {open && (
+        <div style={{ padding: '0 20px 18px' }}>
+          <p style={{ fontSize: 13, color: T.g700, lineHeight: 1.7, margin: '0 0 14px' }}>{section.summary}</p>
+          {section.keyPoints?.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {section.keyPoints.map((kp, i) => (
+                <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: T.p600, flexShrink: 0, marginTop: 7 }} />
+                  <span style={{ fontSize: 13, color: T.g700, lineHeight: 1.6 }}>{kp}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PAID CONSULTATION CHAT (12-hour window) ─────────────────────────────────
+
+function BOConsultationChat({ cluster: c, sessionId, onBack }: { cluster: ClusterData; sessionId: string | null; onBack: () => void }) {
+  const [msgs, setMsgs] = useState<Array<{ id: number; role: 'ai' | 'user'; text: string }>>([{
+    id: 0, role: 'ai',
+    text: `Selamat datang di sesi konsultasi berbayar untuk **${c.name}**! Laporan kamu sudah saya baca. Tanya apa saja — strategi harga, lokasi, menu, kompetitor, atau rencana launch. Sesi ini aktif 12 jam.`,
+  }]);
+  const [input, setInput] = useState('');
+  const [typing, setTyping] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(43200);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const iv = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [msgs, typing]);
+
+  const fmt = (s: number) =>
+    `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  const send = async (text: string) => {
+    if (!text.trim() || typing) return;
+    const history = msgs
+      .filter(m => m.id !== 0)
+      .map(m => ({ role: m.role === 'ai' ? 'assistant' as const : 'user' as const, content: m.text }));
+
+    setMsgs(m => [...m, { id: Date.now(), role: 'user', text }]);
+    setInput('');
+    setTyping(true);
+
+    try {
+      const response = await fetch('/api/chat/paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clusterId: c.id,
+          sessionId: sessionId ?? undefined,
+          messages: [...history, { role: 'user', content: text }],
+        }),
+      });
+
+      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
+
+      const aiMsgId = Date.now() + 1;
+      setTyping(false);
+      setMsgs(m => [...m, { id: aiMsgId, role: 'ai', text: '' }]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            if (parsed.content) {
+              setMsgs(m => m.map(msg =>
+                msg.id === aiMsgId ? { ...msg, text: msg.text + parsed.content } : msg
+              ));
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch {
+      setTyping(false);
+      setMsgs(m => [...m, { id: Date.now(), role: 'ai', text: 'Maaf, terjadi kesalahan. Coba kirim lagi.' }]);
+    }
+  };
+
+  const bold = (t: string) => t.split(/\*\*(.*?)\*\*/g).map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p);
+  const expired = timeLeft === 0;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 24px', background: `linear-gradient(135deg, ${T.g900} 0%, #1e1b4b 100%)`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <ChevronLeft size={18} color="rgba(255,255,255,0.6)" />
+          </button>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageCircle size={18} color={T.c50} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.c50 }}>Konsultasi AI — {c.name}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: expired ? '#EF4444' : '#4ADE80' }} />
+              {expired ? 'Sesi habis' : `Berakhir dalam: ${fmt(timeLeft)}`}
+            </div>
+          </div>
+          <Badge variant="dark" style={{ background: 'rgba(255,255,255,0.12)', color: T.c50 }}>
+            Sesi Berbayar
+          </Badge>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12, background: T.c50 }}>
+        {msgs.map(m => (
+          <div key={m.id} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            {m.role === 'ai' && (
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: T.g900, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0, alignSelf: 'flex-end' }}>
+                <Sparkles size={13} color={T.c50} />
+              </div>
+            )}
+            <div style={{
+              maxWidth: '78%', padding: '12px 16px',
+              borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+              background: m.role === 'user' ? T.g900 : '#fff',
+              color: m.role === 'user' ? T.c50 : T.g900,
+              fontSize: 14, lineHeight: 1.6,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            }}>
+              {bold(m.text)}
+            </div>
+          </div>
+        ))}
+        {typing && (
+          <div style={{ display: 'flex', gap: 5, padding: '12px 16px', background: '#fff', borderRadius: '16px 16px 16px 4px', width: 'fit-content', marginLeft: 36 }}>
+            {[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: T.g500, animation: `bounceDot 1.2s ease ${i * 0.2}s infinite` }} />)}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: '14px 24px 20px', borderTop: `1px solid ${T.c200}`, background: '#fff', flexShrink: 0 }}>
+        {expired ? (
+          <div style={{ textAlign: 'center', padding: '14px', background: '#FEF2F2', borderRadius: 12, fontSize: 13, color: '#EF4444', fontWeight: 600 }}>
+            Sesi konsultasi 12 jam sudah berakhir.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <InputField
+                placeholder="Tanya apa saja tentang konsep dan strategi bisnis kamu..."
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
+              />
+            </div>
+            <button
+              onClick={() => send(input)}
+              disabled={!input.trim() || typing}
+              style={{ width: 44, height: 44, borderRadius: 10, border: 'none', cursor: 'pointer', background: !input.trim() || typing ? T.c200 : T.g900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              <ArrowRight size={17} color={!input.trim() || typing ? T.g500 : T.c50} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

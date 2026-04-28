@@ -63,12 +63,12 @@
 | T-14 | Cluster API Routes | Daffa | DONE | GET /api/clusters + GET /api/clusters/[slug]. Slug validation, no raw values exposed, categoryBreakdown computed server-side, Cache-Control headers set. |
 | T-15 | Seed Margonda 20 Tier 1 Fields | Dylan | DONE | 20 fields seeded, cluster ACTIVE, confidenceScore=87, dataCompleteness=100. B1 ceiling=Rp28K (matcha Rp50K = 78.6% above = "79%"). API returns keyStats. UI pages updated to fetch from /api/clusters. |
 | T-16 | Admin Field Validation API | Dylan | DONE | POST /api/admin/fields (APPROVE/REJECT + on-chain hash anchor + cluster stat recompute). POST /api/admin/clusters (create + optional initOnChain). tsc clean. |
-| T-17 | Cluster Browser + Mapbox | Daffa | PENDING | Needs T-06, T-14 |
+| T-17 | Cluster Browser + Mapbox | Daffa | DONE | /clusters RSC (Prisma direct), ClusterCard, ClusterStats, ClusterMap (mapbox-gl dynamic import, 1.5km circle, MapPlaceholder fallback). tsc clean. |
 | T-18 | Free Chat AI + API Route | Daffa | PENDING | Needs T-01, T-04, T-15 |
 | T-19 | Free Chat UI | Daffa | PENDING | Needs T-06, T-17, T-18 |
 | T-20 | Admin Field Review UI | Daffa | PENDING | Needs T-06, T-16 |
 
-**Phase 3 Progress:** 3 / 7 tickets done
+**Phase 3 Progress:** 4 / 7 tickets done
 
 ---
 

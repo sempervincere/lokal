@@ -221,7 +221,7 @@ export default function LandingPage() {
             Validasi konsep F&B kamu terhadap data pasar hyperlokal terverifikasi — sebelum tanda tangan kontrak sewa.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Button size="lg" onClick={() => { window.location.href = '/login'; }} icon={<MapPin size={18} color={T.c50} />}>
+            <Button size="lg" onClick={() => { window.location.href = '/clusters'; }} icon={<MapPin size={18} color={T.c50} />}>
               Jelajahi Cluster
             </Button>
             <Button size="lg" variant="secondary" onClick={() => scrollTo('section-how')}>
@@ -368,7 +368,7 @@ export default function LandingPage() {
           </div>
         )}
         <div style={{ textAlign: 'center', marginTop: 36 }}>
-          <Button variant="secondary" onClick={() => { window.location.href = '/login'; }} icon={<ArrowRight size={15} color={T.p600} />}>
+          <Button variant="secondary" onClick={() => { window.location.href = '/clusters'; }} icon={<ArrowRight size={15} color={T.p600} />}>
             Lihat Semua Cluster
           </Button>
         </div>
