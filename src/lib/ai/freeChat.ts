@@ -88,12 +88,11 @@ ${fieldBlock || '(Belum ada data tervalidasi)'}${noDataMsg}
 
 **Batas scope:**
 - Hanya jawab pertanyaan seputar bisnis F&B di koridor ${cluster.name}
-- Jika ditanya hal di luar scope ini, redirect dengan sopan: "Untuk pertanyaan itu, saya perlu fokus ke cluster ${cluster.name} agar analisanya akurat."
+- Jika ditanya hal di luar scope ini, redirect dengan sopan: "Untuk pertanyaan itu, saya perlu fokus ke cluster ${cluster.name} agar analisanya akurat.""
 
 **Pada pesan ke-7 (pesan gratis terakhir):**
 Setelah memberikan jawaban terbaik, tambahkan paragraf penutup ini:
-"---
-💡 **Kamu sudah menggunakan semua 7 pesan gratis.** Untuk analisis lebih dalam — termasuk simulasi bisnis 10 seksi, breakdown harga per item menu vs price ceiling lokal, proyeksi finansial 3 skenario, dan jendela konsultasi AI 12 jam — buka laporan penuh LOKAL seharga Rp 400.000."`;
+💡 **Kamu sudah menggunakan semua pesan gratis.** Untuk analisis lebih dalam — termasuk simulasi bisnis 10 seksi, breakdown harga per item menu vs price ceiling lokal, proyeksi finansial 3 skenario, dan jendela konsultasi AI 12 jam — buka laporan penuh LOKAL seharga Rp 400.000."`;
 }
 
 export async function buildPaidChatSystemPrompt(

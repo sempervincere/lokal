@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useSearchParams } from 'next/navigation';
 import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check, TrendingUp, MapPin, DollarSign, Target, Rocket, ShieldAlert, LineChart } from 'lucide-react';
 import { BOReport } from '@/components/session/BOReport';
@@ -696,8 +698,51 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBac
 }
 
 function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; onClose: () => void; onContinue: () => void }) {
+  const { publicKey } = useWallet();
+  const [showWalletPopup, setShowWalletPopup] = useState(false);
+
+  const handlePayClick = () => {
+    if (!publicKey) {
+      setShowWalletPopup(true);
+    } else {
+      onContinue();
+    }
+  };
+
+  // If public key connects while modal is open, we can automatically close the popup
+  useEffect(() => {
+    if (publicKey && showWalletPopup) {
+      setShowWalletPopup(false);
+      onContinue();
+    }
+  }, [publicKey, showWalletPopup, onContinue]);
+
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, position: 'relative' }}>
+      {showWalletPopup && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 50, borderRadius: 24
+        }} className="animate-fade-in-up">
+          <div style={{ background: '#fff', padding: '32px', borderRadius: 20, maxWidth: 360, width: '100%', textAlign: 'center', boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <Lock size={28} color="#EF4444" />
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Wallet Belum Terhubung</h3>
+            <p style={{ fontSize: 14, color: '#6B7280', marginBottom: 24, lineHeight: 1.6 }}>
+              Untuk melanjutkan pembayaran on-chain, hubungkan wallet Solana kamu.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <WalletMultiButton style={{ background: '#1B7A65', borderRadius: '12px', height: '44px' }} />
+            </div>
+            <button onClick={() => setShowWalletPopup(false)} style={{ background: 'none', border: 'none', fontSize: 13, fontWeight: 600, color: '#6B7280', cursor: 'pointer', padding: '8px 16px' }}>
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ background: T.c50, borderRadius: 24, padding: '36px', maxWidth: 460, width: '100%', boxShadow: '0 16px 48px rgba(26,26,26,0.15)' }}>
         <Badge variant="active" style={{ marginBottom: 16 }}><ShieldCheck size={11} color={T.p600} /> Data Terverifikasi On-Chain</Badge>
         <h2 style={{ fontSize: 24, fontWeight: 700, color: T.g900, margin: '0 0 8px', letterSpacing: '-0.01em' }}>Buka Simulasi Bisnis Lengkap</h2>
@@ -724,8 +769,8 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; 
         ))}
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
           <Button variant="ghost" onClick={onClose}>Batal</Button>
-          <Button variant="accent" full onClick={onContinue} icon={<ArrowRight size={15} color={T.c50} />}>
-            Bayar Sekarang — Rp 400.000
+          <Button variant="accent" full onClick={handlePayClick} style={{ justifyContent: 'center' }}>
+            Bayar Sekarang Rp 400.000
           </Button>
         </div>
         <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: T.g500 }}>
