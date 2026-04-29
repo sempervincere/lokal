@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Lock, Sparkles, ChevronLeft, MessageCircle } from 'lucide-react';
+import { Clock, Lock, Sparkles, ChevronLeft, MessageCircle, LayoutDashboard, Users, TrendingUp, Swords, MapPin, Tag, Target, Rocket, ShieldAlert, Calculator, CheckCircle2 } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Badge } from '@/components/ui/Badge';
 
@@ -339,32 +339,73 @@ function RealSectionExpander({ sectionKey, section, delay }: { sectionKey: strin
     return () => clearTimeout(t);
   }, [delay]);
 
+  const getIconAndColor = (key: string) => {
+    switch (key) {
+      case 'section1': return { Icon: LayoutDashboard, color: '#6366F1', bg: '#EEF2FF' };
+      case 'section2': return { Icon: Users, color: '#0EA5E9', bg: '#E0F2FE' };
+      case 'section3': return { Icon: TrendingUp, color: '#10B981', bg: '#D1FAE5' };
+      case 'section4': return { Icon: Swords, color: '#F59E0B', bg: '#FEF3C7' };
+      case 'section5': return { Icon: MapPin, color: '#EF4444', bg: '#FEE2E2' };
+      case 'section6': return { Icon: Tag, color: '#7C3AED', bg: '#EDE9FE' };
+      case 'section7': return { Icon: Target, color: '#F97316', bg: '#FFEDD5' };
+      case 'section8': return { Icon: Rocket, color: '#06B6D4', bg: '#CFFAFE' };
+      case 'section9': return { Icon: ShieldAlert, color: '#DC2626', bg: '#FEF2F2' };
+      case 'section10': return { Icon: Calculator, color: '#059669', bg: '#D1FAE5' };
+      default: return { Icon: LayoutDashboard, color: '#6366F1', bg: '#EEF2FF' };
+    }
+  };
+
+  const { Icon, color, bg } = getIconAndColor(sectionKey);
   const title = section?.title || sectionKey.replace('section', 'Seksi ');
-  const content = section?.content || '';
+  const summary = section?.summary || '';
+  const keyPoints = section?.keyPoints || [];
 
   return (
     <div
-      onClick={() => setOpen(!open)}
       style={{
         opacity: vis ? 1 : 0,
         transform: vis ? 'translateY(0)' : 'translateY(8px)',
         transition: `opacity 300ms ease ${delay}ms, transform 300ms ease ${delay}ms`,
-        background: T.c50,
-        border: `1px solid ${T.c200}`,
-        borderRadius: 14,
-        padding: '16px',
-        cursor: 'pointer',
+        background: '#fff',
+        border: `1px solid ${open ? color : '#E2E8F0'}`,
+        borderRadius: 16,
+        padding: '20px',
+        boxShadow: open ? `0 4px 12px ${color}15` : 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{title}</div>
-        <div style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 200ms', transform: open ? 'rotate(180deg)' : 'rotate(0)' }}>
-          ▼
+      <div 
+        onClick={() => setOpen(!open)}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon size={20} color={color} />
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{title}</div>
+        </div>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', background: open ? bg : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 200ms', transform: open ? 'rotate(180deg)' : 'rotate(0)' }}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.5 4.5L6 8L9.5 4.5" stroke={open ? color : '#64748B'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
       </div>
       {open && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.c200}`, fontSize: 13, color: T.g700, lineHeight: 1.7 }}>
-          {content}
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid #F1F5F9` }}>
+          {summary && (
+            <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6, fontStyle: 'italic', marginBottom: 16 }}>
+              {summary}
+            </div>
+          )}
+          {keyPoints.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {keyPoints.map((pt: string, idx: number) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <CheckCircle2 size={16} color={color} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: 14, color: '#111827', lineHeight: 1.5 }}>{pt}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -65,9 +65,9 @@ export default function SessionPage() {
     <BOReport
       cluster={cluster}
       sessionId={sessionId}
-      onBack={() => router.back()}
+      onBack={() => router.push('/dashboard/history')}
       onStartConsultation={() => router.push(`/session/${sessionId}/chat`)}
-      onViewHistory={() => router.push(`/session/${sessionId}/messages`)}
+      onViewHistory={() => router.push(`/session/${sessionId}/chat`)}
       initialSession={session}
       onSessionLoaded={setSession}
       isExpired={isExpired}

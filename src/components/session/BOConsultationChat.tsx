@@ -49,18 +49,20 @@ export function BOConsultationChat({
 
   // Load past messages from DB when viewing an expired session's history
   useEffect(() => {
-    if (!sessionIsExpired || !sessionId) return;
+    if (!sessionId) return;
     fetch(`/api/sessions/${sessionId}/messages`)
       .then(r => r.json())
       .then((data: Array<{ id: string; role: string; content: string }>) => {
         if (Array.isArray(data) && data.length > 0) {
-          setMsgs(
-            data.map((m, i) => ({
-              id: Date.now() + i,
-              role: m.role === 'assistant' ? ('ai' as const) : ('user' as const),
-              text: m.content,
-            }))
-          );
+          const historicalMsgs = data.map((m: any, i: number) => ({
+            id: Date.now() + i,
+            role: m.role === 'assistant' ? ('ai' as const) : ('user' as const),
+            text: m.content,
+          }));
+          setMsgs(prev => {
+            if (sessionIsExpired) return historicalMsgs;
+            return [prev[0], ...historicalMsgs];
+          });
         } else {
           setMsgs([{ id: 0, role: 'ai', text: 'Belum ada riwayat percakapan untuk sesi ini.' }]);
         }
@@ -149,7 +151,8 @@ export function BOConsultationChat({
   const expired = timeLeft === 0;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' , height: '100%', overflow: 'hidden'}}>
+
       {/* Header */}
       <div style={{ padding: '14px 24px', background: `linear-gradient(135deg, ${T.g900} 0%, #1e1b4b 100%)`, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

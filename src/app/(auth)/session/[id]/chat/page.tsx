@@ -57,7 +57,8 @@ export default function ChatPage() {
   }
 
   return (
-    <BOConsultationChat
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <BOConsultationChat
       cluster={cluster}
       sessionId={sessionId}
       onBack={() => router.push(`/session/${sessionId}`)}
@@ -65,6 +66,7 @@ export default function ChatPage() {
       initialMsgs={chatHistory}
       onMsgsChange={setChatHistory}
       isExpired={isExpired}
-    />
+      />
+    </div>
   );
 }
