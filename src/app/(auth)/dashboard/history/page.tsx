@@ -29,7 +29,7 @@ export default async function BOHistoryPage() {
     <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', background: T.c50 }}>
       
       {/* ACTIVE SIMULATIONS */}
-      <div style={{ marginBottom: 48 }}>
+      <div className="animate-slide-in-right" style={{ marginBottom: 48 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: T.success, boxShadow: `0 0 0 4px ${T.success}30`, animation: 'pulse 2s infinite' }} />
           <div style={{ fontSize: 18, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>Simulasi Aktif (Chat Terbuka)</div>
@@ -46,8 +46,11 @@ export default async function BOHistoryPage() {
               <div key={s.id} style={{ 
                 background: '#fff', borderRadius: 20, border: `1px solid ${T.p400}40`, padding: '24px', 
                 boxShadow: '0 8px 32px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24,
-                position: 'relative', overflow: 'hidden'
-              }}>
+                position: 'relative', overflow: 'hidden',
+                transform: 'translateZ(0)',
+              }}
+              className="hover:scale-[1.01] hover:shadow-lokal-lg transition-all duration-300"
+              >
                 <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: T.p600 }} />
                 
                 <div>
@@ -85,7 +88,7 @@ export default async function BOHistoryPage() {
       </div>
 
       {/* PAST SIMULATIONS */}
-      <div>
+      <div className="animate-fade-in-up delay-200">
         <div style={{ fontSize: 18, fontWeight: 700, color: T.g900, marginBottom: 20, letterSpacing: '-0.01em' }}>Riwayat Simulasi</div>
         
         {pastSessions.length === 0 ? (
@@ -98,7 +101,8 @@ export default async function BOHistoryPage() {
               <div key={s.id} style={{ 
                 background: '#fff', borderRadius: 16, border: `1px solid ${T.c200}`, padding: '20px 24px', 
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24
-              }}>
+              }}
+              className="hover:-translate-y-[2px] hover:shadow-lokal-md transition-all duration-300">
                 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>

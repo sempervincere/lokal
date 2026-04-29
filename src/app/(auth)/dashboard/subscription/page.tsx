@@ -14,7 +14,7 @@ const PLANS = [
 
 export default function BOSubscriptionPage() {
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+    <div className="animate-scale-in" style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
       <div style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Langganan</div>
       <div style={{ fontSize: 14, color: T.g500, marginBottom: 28 }}>Kelola paket langganan kamu.</div>
 

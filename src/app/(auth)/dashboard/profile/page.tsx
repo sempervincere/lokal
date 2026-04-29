@@ -16,7 +16,7 @@ export default async function BOProfilePage() {
   if (!dbUser) return null;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', background: T.c50 }}>
+    <div className="animate-fade-in-up" style={{ flex: 1, overflowY: 'auto', background: T.c50 }}>
       {/* Banner Area */}
       <div style={{ height: 160, background: `linear-gradient(135deg, ${T.p600} 0%, ${T.g900} 100%)`, position: 'relative' }}>
         <div style={{ position: 'absolute', bottom: -40, left: 40, width: 100, height: 100, borderRadius: '50%', background: '#fff', padding: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>

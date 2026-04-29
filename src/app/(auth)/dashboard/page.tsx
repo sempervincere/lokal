@@ -36,7 +36,7 @@ export default async function BOOverviewPage() {
   return (
     <div style={{ padding: '28px 32px', flex: 1, overflowY: 'auto' }}>
       {/* Greeting */}
-      <div style={{ marginBottom: 8 }}>
+      <div className="animate-slide-in-right" style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>
           Selamat datang, {dbUser.fullName.split(' ')[0]} 👋
         </div>
@@ -46,14 +46,14 @@ export default async function BOOverviewPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32, marginTop: 24 }}>
+      <div className="animate-fade-in-up delay-100" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32, marginTop: 24 }}>
         {stats.map((s, i) => (
           <StatCard key={i} icon={s.icon} label={s.label} value={s.value} sub={s.sub} trend={s.trend} color={(s as any).color} />
         ))}
       </div>
 
       {/* Recent simulations */}
-      <div style={{ marginBottom: 28 }}>
+      <div className="animate-fade-in-up delay-200" style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 16 }}>Simulasi Terbaru</div>
         
         {recentSessions.length === 0 ? (
@@ -76,7 +76,8 @@ export default async function BOOverviewPage() {
                   return (
                     <tr
                       key={s.id}
-                      style={{ borderBottom: i < recentSessions.length - 1 ? `1px solid ${T.c200}` : 'none', transition: 'background 150ms' }}
+                      className="hover:bg-[#FDFBF7] hover:-translate-y-[1px] transition-all duration-200"
+                      style={{ borderBottom: i < recentSessions.length - 1 ? `1px solid ${T.c200}` : 'none' }}
                     >
                       <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: T.g900 }}>{s.cluster.name}</td>
                       <td style={{ padding: '14px 16px', fontSize: 13, color: T.g700 }}>{s.conceptForm?.conceptName || 'Draft'}</td>
@@ -101,7 +102,7 @@ export default async function BOOverviewPage() {
       </div>
 
       {/* Quick action banner */}
-      <div style={{ background: T.p100, borderRadius: 16, padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+      <div className="animate-scale-in delay-300" style={{ background: T.p100, borderRadius: 16, padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, color: T.p600, marginBottom: 6 }}>Siap validasi konsep baru?</div>
           <div style={{ fontSize: 13, color: T.p500 }}>Jelajahi cluster aktif dan mulai simulasi AI sekarang.</div>
