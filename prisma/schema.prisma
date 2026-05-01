@@ -1,5 +1,5 @@
 // prisma/schema.prisma
-// LOKAL — Schema v2.1 (8 tables, includes co_earnings)
+// LOKAL — Schema v2.2 (9 tables, includes co_earnings + cluster_proposals)
 
 generator client {
   provider = "prisma-client-js"
@@ -58,6 +58,12 @@ enum CoEarningType {
   REFRESH_BONUS
 }
 
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ─── USERS ────────────────────────────────────────────────
 
 model User {
@@ -70,6 +76,12 @@ model User {
   companyName   String?  @map("company_name")
   phoneNumber   String?  @map("phone_number")
   jobTitle      String?  @map("job_title")
+
+  // ── KYC & profile fields (v2.2) ─────────────────────────────
+  username       String?  @unique
+  ktpHash        String?  @unique @map("ktp_hash")
+  kycCompleted   Boolean  @default(false) @map("kyc_completed")
+  referralSource String?  @map("referral_source")
   
   credits       Int      @default(0)
   isSubs        Boolean  @default(false) @map("is_subs")
@@ -89,6 +101,7 @@ model ClusterOwner {
   id             String   @id @default(uuid())
   userId         String   @unique @map("user_id")
   coScore        Int      @default(0) @map("co_score")
+  trustScore     Int      @default(60) @map("trust_score")
   nftMintAddress String?  @map("nft_mint_address")
   nftTxSignature String?  @map("nft_tx_signature")
   isActive       Boolean  @default(true) @map("is_active")
@@ -97,6 +110,7 @@ model ClusterOwner {
   user       User        @relation(fields: [userId], references: [id])
   clusters   Cluster[]
   coEarnings CoEarning[]
+  proposals  ClusterProposal[]
 
   @@map("cluster_owners")
 }
@@ -148,6 +162,43 @@ model Cluster {
 
   @@map("clusters")
 }
+
+// ─── CLUSTER PROPOSALS (v2.2) ───────────────────────────────
+
+model ClusterProposal {
+  id          String         @id @default(uuid())
+  coId        String         @map("co_id")
+
+  // ── Section 1: Area Legitimacy ────────────────────────────
+  occupation        String
+  areaDuration      String   @map("area_duration")
+  primaryAnchor     String   @map("primary_anchor")
+  physicalPresence  String   @map("physical_presence")
+  sampleBusinesses  Json     @map("sample_businesses")
+
+  // ── Section 2: Cluster Details ────────────────────────────
+  clusterName        String  @map("cluster_name")
+  clusterDescription String? @map("cluster_description")
+  anchorType         String  @map("anchor_type")
+  corridorDesc       String  @map("corridor_desc")
+  anchorLat          Float   @map("anchor_lat")
+  anchorLng          Float   @map("anchor_lng")
+  anchorLabel        String  @map("anchor_label")
+  radiusKm           Float   @default(1.5) @map("radius_km")
+
+  // ── Metadata ──────────────────────────────────────────────
+  status    ProposalStatus @default(PENDING)
+  adminNote String?        @map("admin_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clusterOwner ClusterOwner @relation(fields: [coId], references: [id])
+
+  @@map("cluster_proposals")
+}
+
+// ─── FIELD VALUES ───────────────────────────────────────────
 
 model ClusterFieldValue {
   id               String      @id @default(uuid())

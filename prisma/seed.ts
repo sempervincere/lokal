@@ -31,6 +31,9 @@ async function main() {
       email: 'dylansius.putra@gmail.com',
       fullName: 'Dylansius Putra Prasetio',
       role: 'CLUSTER_OWNER',
+      kycCompleted: true,
+      username: 'dylansius',
+      referralSource: 'Friends',
     },
   });
   console.log(`✓  CO User: ${coUser.email} (${coUser.id}, role: ${coUser.role})`);
@@ -42,6 +45,7 @@ async function main() {
     create: {
       userId: coUser.id,
       coScore: 85,
+      trustScore: 85,
       isActive: true,
     },
   });

@@ -24,10 +24,29 @@ export const MIN_MENU_ITEMS = 1;
 /** Maximum free clusters available without payment */
 export const MAX_FREE_CLUSTERS = 1;
 
-// ── Cluster Owner revenue share ───────────────────────────────────────────
+// ── Cluster Owner revenue share (tiered per PRD §9.2) ─────────────────────
 
-/** CO revenue share rate: 5% flat of session price for MVP */
+/** Reputation tiers and their session revenue share rates */
+export const CO_REPUTATION_TIERS = [
+  { tier: 1, label: 'Tier 1', minScore: 0,  maxScore: 39,  shareRate: 0.05, shareIdrx: 20000, multiplier: 1.0 },
+  { tier: 2, label: 'Tier 2', minScore: 40, maxScore: 69,  shareRate: 0.07, shareIdrx: 28000, multiplier: 1.3 },
+  { tier: 3, label: 'Tier 3', minScore: 70, maxScore: 100, shareRate: 0.10, shareIdrx: 40000, multiplier: 1.7 },
+] as const;
+
+/** Resolve a CO's reputation tier from their coScore */
+export function getCoTier(coScore: number) {
+  return CO_REPUTATION_TIERS.find(
+    (t) => coScore >= t.minScore && coScore <= t.maxScore,
+  )!;
+}
+
+/** CO session share in IDRX for a given coScore */
+export function getCoShareByIdrx(coScore: number): number {
+  return getCoTier(coScore).shareIdrx;
+}
+
+/** Legacy flat rate — deprecated, use getCoTier() instead */
 export const CO_SESSION_SHARE_RATE = 0.05;
 
-/** CO revenue share per session in IDRX: 5% × Rp 400,000 = Rp 20,000 */
-export const CO_SESSION_SHARE_IDRX = Math.round(SESSION_PRICE_IDRX * CO_SESSION_SHARE_RATE); // 20,000
+/** Legacy flat amount — deprecated, use getCoShareByIdrx() instead */
+export const CO_SESSION_SHARE_IDRX = 20_000;

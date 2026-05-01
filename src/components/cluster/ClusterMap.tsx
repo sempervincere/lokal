@@ -93,37 +93,128 @@ export function ClusterMap({
         mapInstanceRef.current = map;
 
         map.addControl(new mapboxgl.default.NavigationControl(), 'bottom-right');
+        map.addControl(new mapboxgl.default.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
 
         map.on('load', () => {
-          clusters.forEach((cluster) => {
-            const el = document.createElement('div');
-            el.style.cssText = [
-              'width:36px', 'height:36px',
-              `background:${T.p600}`,
-              'border:3px solid #fff',
-              'border-radius:50%',
-              'box-shadow:0 2px 10px rgba(0,0,0,0.25)',
-              'cursor:pointer',
-            ].join(';');
+          const geojson: GeoJSON.FeatureCollection = {
+            type: 'FeatureCollection',
+            features: clusters.map((cluster) => ({
+              type: 'Feature',
+              geometry: { type: 'Point', coordinates: [cluster.anchorLng, cluster.anchorLat] },
+              properties: {
+                slug: cluster.slug,
+                name: cluster.name,
+                anchorLabel: cluster.anchorLabel,
+                confidenceScore: cluster.confidenceScore,
+                status: cluster.status,
+                isActive: cluster.status === 'ACTIVE',
+              },
+            })),
+          };
 
-            const popup = new mapboxgl.default.Popup({ offset: 22, closeButton: false })
-              .setHTML(
-                `<div style="font-size:13px;font-weight:800;color:${T.g900};margin-bottom:4px">${cluster.name}</div>` +
-                `<div style="font-size:11px;color:${T.g500};margin-bottom:8px">Confidence: ${cluster.confidenceScore}%</div>` +
-                `<a href="/clusters/${cluster.slug}" style="font-size:12px;color:${T.p600};font-weight:700;text-decoration:none">Lihat Cluster →</a>`
-              );
-
-            const marker = new mapboxgl.default.Marker({ element: el })
-              .setLngLat([cluster.anchorLng, cluster.anchorLat])
-              .setPopup(popup)
-              .addTo(map);
-
-            el.addEventListener('click', () => {
-              onClusterClick?.(cluster.slug);
-              map.flyTo({ center: [cluster.anchorLng, cluster.anchorLat], zoom: 13, duration: 800 });
-              marker.togglePopup();
-            });
+          map.addSource('clusters-points', {
+            type: 'geojson',
+            data: geojson,
           });
+
+          map.addLayer({
+            id: 'clusters-markers',
+            type: 'circle',
+            source: 'clusters-points',
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 24],
+              'circle-color': ['case', ['get', 'isActive'], T.p600, T.g500],
+              'circle-stroke-color': '#ffffff',
+              'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 8, 2.5, 14, 4],
+              'circle-opacity': 0.92,
+            },
+          });
+
+          map.addLayer({
+            id: 'clusters-markers-inner',
+            type: 'circle',
+            source: 'clusters-points',
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 14, 9],
+              'circle-color': '#ffffff',
+              'circle-opacity': 0.85,
+            },
+          });
+
+          map.addLayer({
+            id: 'clusters-labels',
+            type: 'symbol',
+            source: 'clusters-points',
+            layout: {
+              'text-field': ['get', 'name'],
+              'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 14, 15],
+              'text-offset': [0, 1.8],
+              'text-anchor': 'top',
+              'text-allow-overlap': false,
+            },
+            paint: {
+              'text-color': T.g700,
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1.5,
+            },
+          });
+
+          map.on('click', 'clusters-markers', (e) => {
+            const feature = e.features?.[0];
+            if (!feature) return;
+            const props = feature.properties;
+            const coords = (feature.geometry as GeoJSON.Point).coordinates;
+            const slug = props?.slug;
+            const name = props?.name;
+            const anchorLabel = props?.anchorLabel;
+            const confidenceScore = props?.confidenceScore;
+            const status = props?.status;
+            const isActive = props?.isActive;
+
+            onClusterClick?.(slug);
+
+            map.flyTo({
+              center: [coords[0], coords[1]],
+              zoom: 13,
+              offset: [120, 0],
+              duration: 900,
+              essential: true,
+            });
+
+            new mapboxgl.default.Popup({ offset: 18, closeButton: true, maxWidth: '280px' })
+              .setLngLat([coords[0], coords[1]])
+              .setHTML(
+                `<div style="font-family:system-ui,sans-serif;padding:4px">` +
+                `<div style="font-size:13px;font-weight:800;color:${T.g900};margin-bottom:2px">${name}</div>` +
+                `<div style="font-size:11px;color:${T.g500};margin-bottom:10px">${anchorLabel}</div>` +
+                `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">` +
+                `<div style="background:${T.p100};padding:8px;border-radius:6px;text-align:center">` +
+                `<div style="font-size:10px;color:${T.g500};font-weight:600">Confidence</div>` +
+                `<div style="font-size:18px;font-weight:800;color:${T.p600}">${confidenceScore}%</div>` +
+                `</div>` +
+                `<div style="background:${T.c100};padding:8px;border-radius:6px;text-align:center">` +
+                `<div style="font-size:10px;color:${T.g500};font-weight:600">Status</div>` +
+                `<div style="font-size:12px;font-weight:700;color:${isActive ? T.p600 : T.g500}">${isActive ? 'Aktif' : 'Seeding'}</div>` +
+                `</div>` +
+                `</div>` +
+                `<a href="/clusters/${slug}" style="display:block;text-align:center;padding:8px 14px;background:${T.p600};color:#fff;border-radius:8px;font-weight:700;font-size:12px;text-decoration:none">Lihat Detail →</a>` +
+                `</div>`
+              )
+              .addTo(map);
+          });
+
+          map.on('mouseenter', 'clusters-markers', () => {
+            map.getCanvas().style.cursor = 'pointer';
+          });
+          map.on('mouseleave', 'clusters-markers', () => {
+            map.getCanvas().style.cursor = '';
+          });
+
+          new mapboxgl.default.Popup({ closeButton: false, offset: 0, closeOnClick: false })
+            .setLngLat([clusters[0]?.anchorLng ?? 106.8315, clusters[0]?.anchorLat ?? -6.3728])
+            .setHTML(`<div style="font-size:12px;color:${T.g500};font-family:system-ui;padding:4px 8px;background:rgba(255,255,255,0.9);border-radius:6px">Klik marker untuk lihat detail cluster</div>`)
+            .addTo(map);
         });
 
         map.on('error', () => setError(true));
@@ -187,6 +278,7 @@ export function ClusterMap({
 
           if (showControls) {
             map.addControl(new mapboxgl.default.NavigationControl(), 'bottom-right');
+            map.addControl(new mapboxgl.default.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
           }
         });
 

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { callAnthropicSync } from '@/lib/ai/anthropicClient';
+import { getCoShareByIdrx } from '@/lib/constants/pricing';
 
 interface ConceptFormInput {
   fbSubcategory: string;
@@ -232,13 +233,14 @@ export async function generateReport(sessionId: string): Promise<void> {
         },
       });
 
-      // CO earnings: 5% of session price
+      // CO earnings: tiered share based on coScore
       if (session.cluster.owner) {
+        const shareIdrx = getCoShareByIdrx(session.cluster.owner.coScore);
         await tx.coEarning.create({
           data: {
             coId: session.cluster.owner.id,
             type: 'SESSION_SHARE',
-            amountIdrx: 20000,
+            amountIdrx: shareIdrx,
             description: `Revenue share dari sesi ${sessionId} — ${session.cluster.name}`,
             clusterId: session.clusterId,
             sessionId,

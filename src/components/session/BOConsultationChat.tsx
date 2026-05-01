@@ -151,7 +151,7 @@ export function BOConsultationChat({
   const expired = timeLeft === 0;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' , height: '100%', overflow: 'hidden'}}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100%' }}>
 
       {/* Header */}
       <div style={{ padding: '14px 24px', background: `linear-gradient(135deg, ${T.g900} 0%, #1e1b4b 100%)`, flexShrink: 0 }}>

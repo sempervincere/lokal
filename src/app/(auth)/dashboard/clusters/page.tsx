@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check, TrendingUp, MapPin, DollarSign, Target, Rocket, ShieldAlert, LineChart } from 'lucide-react';
 import { BOReport } from '@/components/session/BOReport';
 import { BOConsultationChat } from '@/components/session/BOConsultationChat';
-import { T, CLUSTERS, ClusterData } from '@/lib/constants/mock-data';
+import { T, ClusterData } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
 import type { ClusterKeyStats } from '@/lib/utils/clusterStats';
 
@@ -131,6 +131,7 @@ function BOClustersPageInner() {
   const [cityFilter, setCityFilter] = useState('all');
   const [clusters, setClusters] = useState<ClusterData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
 
   const cities = [
@@ -146,17 +147,21 @@ function BOClustersPageInner() {
     const timeout = setTimeout(() => controller.abort(), 6000);
 
     fetch('/api/clusters', { signal: controller.signal })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data: ApiCluster[]) => {
         if (Array.isArray(data) && data.length > 0) {
           setClusters(data.map(mapApiToClusterData));
         } else {
-          // API returned error object or empty — fall back to mock
-          setClusters(CLUSTERS);
+          setClusters([]);
         }
+        setError(false);
       })
       .catch(() => {
-        setClusters(CLUSTERS);
+        setError(true);
+        setClusters([]);
       })
       .finally(() => {
         clearTimeout(timeout);
@@ -165,6 +170,36 @@ function BOClustersPageInner() {
 
     return () => { clearTimeout(timeout); controller.abort(); };
   }, []);
+
+  const retry = () => {
+    setLoading(true);
+    setError(false);
+    setClusters([]);
+    // Re-trigger by calling the same fetch
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    fetch('/api/clusters', { signal: controller.signal })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: ApiCluster[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setClusters(data.map(mapApiToClusterData));
+        } else {
+          setClusters([]);
+        }
+        setError(false);
+      })
+      .catch(() => {
+        setError(true);
+        setClusters([]);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
     if (initialSessionId && clusters.length > 0 && !selected) {
@@ -224,8 +259,34 @@ function BOClustersPageInner() {
         </div>
       </div>
       {loading ? (
-        <div style={{ fontSize: 13, color: T.g500, padding: '32px 0', textAlign: 'center' }}>
-          Memuat data cluster...
+        <ClusterGridSkeleton />
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <div style={{ fontSize: 14, color: T.g500, marginBottom: 16 }}>
+            Gagal memuat data cluster. Periksa koneksi Anda.
+          </div>
+          <button
+            onClick={retry}
+            style={{
+              padding: '9px 20px',
+              borderRadius: 10,
+              border: 'none',
+              background: T.p600,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Coba Lagi
+          </button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+          <div style={{ fontSize: 14, color: T.g500 }}>
+            Tidak ada cluster yang cocok dengan pencarian Anda.
+          </div>
         </div>
       ) : (
         <>
@@ -293,6 +354,30 @@ function ClusterCard({ cluster: c, onSelect, delay }: { cluster: ClusterData; on
           <Button size="sm" full onClick={onSelect} icon={<Eye size={13} color={T.c50} />}>Lihat Detail</Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClusterGridSkeleton() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 18 }}>
+      {[0, 1, 2].map(i => (
+        <div key={i} style={{
+          background: T.c50, borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden',
+          animation: 'pulse 1.5s ease-in-out infinite',
+        }}>
+          <div style={{ height: 110, background: `linear-gradient(135deg, ${T.c200} 0%, ${T.c100} 100%)` }} />
+          <div style={{ padding: '14px 16px 16px' }}>
+            <div style={{ height: 18, borderRadius: 6, background: T.c200, marginBottom: 6, width: '70%' }} />
+            <div style={{ height: 12, borderRadius: 5, background: T.c200, marginBottom: 12, width: '50%' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7, marginBottom: 12 }}>
+              {[0, 1, 2].map(j => <div key={j} style={{ background: T.c200, borderRadius: 8, height: 52 }} />)}
+            </div>
+            <div style={{ height: 4, borderRadius: 4, background: T.c200, marginBottom: 12 }} />
+            <div style={{ height: 36, borderRadius: 10, background: T.c200 }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
