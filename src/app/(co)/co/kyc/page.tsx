@@ -102,7 +102,7 @@ export default function COKycPage() {
 
     // Show success immediately, then redirect
     setSuccess(true);
-    setTimeout(() => router.push('/co/dashboard'), 1200);
+    setTimeout(() => router.replace('/co/dashboard'), 500);
   }
 
   if (loading) {

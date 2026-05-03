@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Activity, FileText, DollarSign, MapPin, LogOut, Award, Wallet, User, ShieldCheck } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { T } from '@/lib/constants/mock-data';
 import { createClient } from '@/lib/supabase/client';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -82,7 +83,14 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!ready) return null;
+  if (!ready) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: T.c50 }}>
+        <LoadingSpinner size="lg" />
+        <div style={{ fontSize: 13, color: T.g500, marginTop: 16 }}>Memuat dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <CoContext.Provider value={coData}>

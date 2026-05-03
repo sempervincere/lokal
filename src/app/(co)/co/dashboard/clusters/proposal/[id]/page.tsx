@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   ChevronLeft, Save, AlertCircle, Check, Plus, Trash2,
-  Send, Building2, Users, Loader2,
+  Send, Building2, Users, Loader2, Navigation, MapPin,
 } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
@@ -24,15 +26,36 @@ const LABELS: Record<string, string> = {
 
 interface BizEntry { name: string; location: string; priceRange: string; }
 
+/* ── Map Helpers ───────────────────────────────────────────── */
+
+function createCircleGeoJSON(center: [number, number], radiusKm: number, points = 64) {
+  const coords: [number, number][] = [];
+  const distanceX = radiusKm / (111.32 * Math.cos((center[1] * Math.PI) / 180));
+  const distanceY = radiusKm / 110.574;
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    coords.push([center[0] + distanceX * Math.cos(theta), center[1] + distanceY * Math.sin(theta)]);
+  }
+  coords.push(coords[0]);
+  return { type: 'Feature' as const, geometry: { type: 'Polygon' as const, coordinates: [coords] }, properties: {} };
+}
+
 export default function ProposalEditPage() {
   const router = useRouter();
   const params = useParams();
   const proposalId = params.id as string;
 
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  const circleSourceRef = useRef<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   /* Form state */
   const [occupation, setOccupation] = useState('');
@@ -75,6 +98,79 @@ export default function ProposalEditPage() {
       })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [proposalId]);
+
+  /* Mapbox init — after proposal loads and coords are known */
+  useEffect(() => {
+    if (loading || anchorLat == null || anchorLng == null || !mapContainerRef.current || mapRef.current) return;
+
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) { setGeoError('Mapbox token tidak dikonfigurasi.'); return; }
+    mapboxgl.accessToken = token;
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [anchorLng, anchorLat],
+      zoom: 14.5,
+      attributionControl: false,
+    });
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }));
+
+    map.on('load', () => {
+      const sourceId = `circle-${Date.now()}`;
+      circleSourceRef.current = sourceId;
+      map.addSource(sourceId, { type: 'geojson', data: createCircleGeoJSON([anchorLng, anchorLat], 1.5) as any });
+      map.addLayer({ id: `${sourceId}-fill`, type: 'fill', source: sourceId, paint: { 'fill-color': T.p600, 'fill-opacity': 0.08 } });
+      map.addLayer({ id: `${sourceId}-line`, type: 'line', source: sourceId, paint: { 'line-color': T.p600, 'line-width': 2, 'line-dasharray': [4, 3], 'line-opacity': 0.6 } });
+
+      const el = document.createElement('div');
+      el.className = 'w-8 h-8 rounded-full flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing';
+      el.style.backgroundColor = T.p600;
+      el.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+      const marker = new mapboxgl.Marker({ element: el, draggable: true }).setLngLat([anchorLng, anchorLat]).addTo(map);
+      marker.on('dragend', () => {
+        const { lng, lat } = marker.getLngLat();
+        setAnchorLat(Number(lat.toFixed(5)));
+        setAnchorLng(Number(lng.toFixed(5)));
+        setAnchorLabel(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        const src = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+        if (src) src.setData(createCircleGeoJSON([lng, lat], 1.5) as any);
+      });
+      markerRef.current = marker;
+    });
+    mapRef.current = map;
+
+    return () => { map.remove(); mapRef.current = null; markerRef.current = null; circleSourceRef.current = null; };
+  }, [loading, anchorLat, anchorLng]);
+
+  function syncMapToCoords(lat: number, lng: number) {
+    const map = mapRef.current;
+    if (!map) return;
+    if (markerRef.current) markerRef.current.setLngLat([lng, lat]);
+    map.flyTo({ center: [lng, lat], zoom: 14.5, essential: true });
+    const sid = circleSourceRef.current;
+    if (sid) {
+      const src = map.getSource(sid) as mapboxgl.GeoJSONSource;
+      if (src) src.setData(createCircleGeoJSON([lng, lat], 1.5) as any);
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) { setGeoError('Geolocation tidak didukung.'); return; }
+    setGeoLoading(true); setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lng = Number(pos.coords.longitude.toFixed(5));
+        setAnchorLat(lat); setAnchorLng(lng); setAnchorLabel(`${lat}, ${lng}`);
+        setGeoLoading(false);
+        syncMapToCoords(lat, lng);
+      },
+      () => { setGeoError('Gagal mendapatkan lokasi. Pastikan izin lokasi diaktifkan.'); setGeoLoading(false); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
 
   const finalOccupation = occupation === 'other' && occupationOther.trim() ? `other: ${occupationOther.trim()}` : occupation;
 
@@ -327,20 +423,59 @@ export default function ProposalEditPage() {
               style={{ width: '100%', padding: '12px 16px', borderRadius: 12, resize: 'vertical', border: `1.5px solid ${T.c200}`, fontSize: 14, fontFamily: 'inherit', color: T.g900, outline: 'none', boxSizing: 'border-box', lineHeight: 1.6 }} />
           </div>
 
-          {/* Coordinates */}
+          {/* Coordinates + Mapbox */}
           <div style={{ background: T.c100, borderRadius: 16, padding: '20px 24px' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 10 }}>Koordinat Anchor</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 2 }}>Titik Anchor — Pusat Radius 1.5km</div>
+                <p style={{ fontSize: 13, color: T.g500 }}>Geser pin di peta atau isi koordinat manual di bawah.</p>
+              </div>
+              <button type="button" onClick={useCurrentLocation} disabled={geoLoading} style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, border: 'none',
+                cursor: geoLoading ? 'wait' : 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                color: T.e600, background: T.e100, opacity: geoLoading ? 0.7 : 1, transition: 'all 150ms', flexShrink: 0,
+              }}>
+                <Navigation size={14} color={T.e600} />
+                {geoLoading ? 'Mendeteksi...' : '📍 Gunakan Lokasi Saya'}
+              </button>
+            </div>
+
+            {geoError && (
+              <div style={{ marginBottom: 12, padding: '10px 14px', background: '#FEF3C7', borderRadius: 10, fontSize: 13, color: T.warning, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertCircle size={16} />{geoError}
+              </div>
+            )}
+
+            <div ref={mapContainerRef} style={{ width: '100%', height: 320, borderRadius: 14, border: `1.5px solid ${T.c200}`, position: 'relative', overflow: 'hidden', background: T.c100, marginBottom: 14 }}>
+              {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: T.g500 }}>
+                  <MapPin size={32} style={{ marginBottom: 8 }} />
+                  <span style={{ fontSize: 14 }}>Mapbox token tidak dikonfigurasi</span>
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 500, color: T.g500, marginBottom: 4 }}>Latitude</div>
                 <input placeholder="-6.3728" value={anchorLat != null ? String(anchorLat) : ''}
-                  onChange={e => setAnchorLat(parseFloat(e.target.value) || null)} type="number" step="any"
+                  onChange={e => {
+                    const v = parseFloat(e.target.value);
+                    const lat = Number.isNaN(v) ? null : v;
+                    setAnchorLat(lat);
+                    if (lat != null && anchorLng != null) { setAnchorLabel(`${lat}, ${anchorLng}`); syncMapToCoords(lat, anchorLng); }
+                  }} type="number" step="any"
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`, fontSize: 14, fontFamily: 'inherit', color: T.g900, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 500, color: T.g500, marginBottom: 4 }}>Longitude</div>
                 <input placeholder="106.8315" value={anchorLng != null ? String(anchorLng) : ''}
-                  onChange={e => setAnchorLng(parseFloat(e.target.value) || null)} type="number" step="any"
+                  onChange={e => {
+                    const v = parseFloat(e.target.value);
+                    const lng = Number.isNaN(v) ? null : v;
+                    setAnchorLng(lng);
+                    if (anchorLat != null && lng != null) { setAnchorLabel(`${anchorLat}, ${lng}`); syncMapToCoords(anchorLat, lng); }
+                  }} type="number" step="any"
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`, fontSize: 14, fontFamily: 'inherit', color: T.g900, outline: 'none', boxSizing: 'border-box' }} />
               </div>
             </div>
