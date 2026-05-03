@@ -45,7 +45,7 @@ export default function COClusterPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>

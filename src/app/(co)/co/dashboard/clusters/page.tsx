@@ -131,7 +131,7 @@ export default function COClusterListPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
@@ -316,7 +316,7 @@ export default function COClusterListPage() {
 
               {/* Actions */}
               {selectedProposal.status === 'PENDING' && (
-                <Button full icon={<Edit3 size={16} color={T.c50} />} onClick={() => router.push(`/co/dashboard/clusters/proposal/${selectedProposal.id}/edit`)}>
+                <Button full icon={<Edit3 size={16} color={T.c50} />} onClick={() => router.push(`/co/dashboard/clusters/proposal/${selectedProposal.id}`)}>
                   Edit Proposal
                 </Button>
               )}

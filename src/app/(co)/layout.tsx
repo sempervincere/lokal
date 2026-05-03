@@ -27,10 +27,13 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
   const { connected, publicKey, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
 
-  const activePage = [...NAV_ITEMS].sort((a, b) => b.href.length - a.href.length).find(n => pathname.startsWith(n.href))?.id ?? 'overview';
+  const ROUTE_TO_NAV: Record<string, string> = {
+    '/co/cluster': 'clusters-list',
+  };
+  const activePage = ROUTE_TO_NAV[pathname] ?? [...NAV_ITEMS].sort((a, b) => b.href.length - a.href.length).find(n => pathname.startsWith(n.href))?.id ?? 'overview';
   const [ready, setReady] = useState(false);
   const [coData, setCoData] = useState<CoContextValue | null>(null);
-  const [coInfo, setCoInfo] = useState<{ fullName: string; coScore: number; kycCompleted: boolean } | null>(null);
+  const [coInfo, setCoInfo] = useState<{ displayName: string; coScore: number; kycCompleted: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +48,8 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
           const data = await res.json();
           if (data.co) {
             const bypass = KYC_BYPASS_EMAILS.includes(user?.email || '');
-            setCoInfo({ fullName: data.co.fullName ?? 'Cluster Owner', coScore: data.co.coScore ?? 0, kycCompleted: bypass || data.co.kycCompleted === true });
+            const displayName = data.co.username?.trim() || data.co.fullName?.trim() || 'Cluster Owner';
+            setCoInfo({ displayName, coScore: data.co.coScore ?? 0, kycCompleted: bypass || data.co.kycCompleted === true });
             setCoData(data as CoContextValue);
             // KYC gate
             if (!bypass && data.co.kycCompleted !== true && pathname !== '/co/kyc') {
@@ -91,7 +95,7 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
                 <Award size={16} color={T.p600} />
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.g900 }}>{coInfo?.fullName ?? 'Cluster Owner'}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: T.g900 }}>{coInfo?.displayName ?? 'Cluster Owner'}</div>
                 <div style={{ fontSize: 11, color: T.g500 }}>
                   Cluster Owner · {tier?.label ?? 'Tier 1'}
                   {coInfo?.kycCompleted && <ShieldCheck size={10} color={T.success} style={{ marginLeft: 4, verticalAlign: 'middle' }} />}

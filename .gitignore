@@ -10,3 +10,5 @@ node_modules/
 # solana/anchor specific
 anchor/target/
 target/deploy/*-keypair.json
+
+# Documentations

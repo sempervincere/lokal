@@ -54,7 +54,7 @@ export default function COOverviewPage() {
     return (
       <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>Selamat datang, {co.fullName.split(' ')[0]} 👋</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>Selamat datang, {co.username?.trim() || co.fullName.split(' ')[0]}</div>
           <div style={{ fontSize: 14, color: T.g500, marginTop: 4 }}>Saatnya membangun cluster pertamamu.</div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
@@ -83,7 +83,7 @@ export default function COOverviewPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>Selamat datang, {co.fullName.split(' ')[0]} 👋</div>
         <div style={{ fontSize: 14, color: T.g500, marginTop: 4 }}>Cluster {cluster.name} {cluster.status === 'ACTIVE' ? 'aktif' : 'sedang diisi'} dan menghasilkan pendapatan.</div>

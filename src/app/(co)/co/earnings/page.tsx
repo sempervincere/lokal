@@ -77,7 +77,7 @@ export default function COEarningsPage() {
   const { totalIdrx, pendingIdrx, estimatedThisMonthIdrx, shareRate, shareRateLabel, perSessionIdrx, tier, records } = data;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 28 }}>
         <StatCard icon={<DollarSign size={18} color={T.p600} />} label="Total Pendapatan" value={formatRupiah(totalIdrx)} sub="sejak bergabung" />
         <div style={{ background: T.c50, border: `1px solid ${T.c200}`, borderRadius: 14, padding: '18px 20px' }}>

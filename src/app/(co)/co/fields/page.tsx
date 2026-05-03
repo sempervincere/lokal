@@ -133,7 +133,7 @@ export default function COFieldsPage() {
   const filtered = filter === 'all' ? fields : fields.filter(f => f.status === filter);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       {formBuilderField && <FormBuilderModal field={formBuilderField} onClose={() => setFormBuilderField(null)} />}
 
       <div style={{

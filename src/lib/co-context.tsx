@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react';
 export interface CoContextValue {
   co: {
     fullName: string;
+    username: string | null;
     coScore: number;
     trustScore: number;
     kycCompleted: boolean;
