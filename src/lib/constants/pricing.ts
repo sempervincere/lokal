@@ -50,3 +50,61 @@ export const CO_SESSION_SHARE_RATE = 0.05;
 
 /** Legacy flat amount — deprecated, use getCoShareByIdrx() instead */
 export const CO_SESSION_SHARE_IDRX = 20_000;
+
+// ── Respondent Vault System ─────────────────────────────────────
+
+/** Percentage of session revenue allocated to respondent vault (8%) */
+export const VAULT_ALLOCATION_RATE = 0.08;
+
+/** Amount in IDRX allocated to vault per session (8% of 400,000) */
+export const VAULT_ALLOCATION_IDRX = SESSION_PRICE_IDRX * VAULT_ALLOCATION_RATE; // 32,000
+
+/** Amount in base units allocated to vault per session */
+export const VAULT_ALLOCATION_BASE_UNITS = SESSION_PRICE_BASE_UNITS * VAULT_ALLOCATION_RATE; // 32,000,000,000
+
+/** Minimum IDRX balance required for manual withdrawal */
+export const VAULT_MIN_WITHDRAWAL_IDRX = 10_000;
+
+/** CO rejection threshold before admin review is triggered (15%) */
+export const CO_REJECTION_THRESHOLD_RATE = 0.15;
+
+/** Minimum number of responses before rejection threshold applies */
+export const CO_REJECTION_THRESHOLD_MIN_RESPONSES = 5;
+
+// ── Helper Functions ────────────────────────────────────────────
+
+/**
+ * Calculate vault allocation for a session
+ * @param sessionPriceIdrx - Session price in IDRX (default: 400,000)
+ * @returns Vault allocation in IDRX
+ */
+export function calculateVaultAllocation(sessionPriceIdrx: number = SESSION_PRICE_IDRX): number {
+  return Math.floor(sessionPriceIdrx * VAULT_ALLOCATION_RATE);
+}
+
+/**
+ * Calculate per-respondent reward from vault
+ * @param vaultBalance - Total vault balance in IDRX
+ * @param totalApprovedFields - Total number of approved field responses
+ * @param respondentApprovedFields - Number of fields this respondent contributed
+ * @returns Reward amount in IDRX for this respondent
+ */
+export function calculateRespondentReward(
+  vaultBalance: number,
+  totalApprovedFields: number,
+  respondentApprovedFields: number
+): number {
+  if (totalApprovedFields === 0) return 0;
+  return Math.floor((vaultBalance / totalApprovedFields) * respondentApprovedFields);
+}
+
+/**
+ * Check if CO rejection rate exceeds threshold
+ * @param rejectedCount - Number of rejected responses
+ * @param totalCount - Total number of responses reviewed
+ * @returns true if threshold exceeded
+ */
+export function isRejectionThresholdExceeded(rejectedCount: number, totalCount: number): boolean {
+  if (totalCount < CO_REJECTION_THRESHOLD_MIN_RESPONSES) return false;
+  return (rejectedCount / totalCount) > CO_REJECTION_THRESHOLD_RATE;
+}

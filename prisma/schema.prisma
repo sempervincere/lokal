@@ -64,6 +64,32 @@ enum ProposalStatus {
   REJECTED
 }
 
+// ─── SURVEY SYSTEM ENUMS ──────────────────────────────────────
+
+enum SurveyResponseStatus {
+  IN_PROGRESS
+  SUBMITTED
+  REVIEWED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ClaimStatus {
+  PENDING
+  DISTRIBUTED
+  FAILED
+}
+
+enum VaultStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
 // ─── USERS ────────────────────────────────────────────────
 
 model User {
@@ -159,6 +185,8 @@ model Cluster {
   owner       ClusterOwner       @relation(fields: [ownerId], references: [id])
   fieldValues ClusterFieldValue[]
   sessions    Session[]
+  surveyResponses SurveyResponse[]
+  vault       ClusterVault?
 
   @@map("clusters")
 }
@@ -223,6 +251,7 @@ model ClusterFieldValue {
   validatedAt  DateTime? @map("validated_at")
 
   cluster Cluster @relation(fields: [clusterId], references: [id])
+  surveyFieldResponses SurveyFieldResponse[]
 
   @@unique([clusterId, fieldCode])
   @@map("cluster_field_values")
@@ -311,4 +340,98 @@ model Message {
   user    User     @relation(fields: [userId], references: [id])
 
   @@map("messages")
+}
+
+// ─── SURVEY SYSTEM ──────────────────────────────────────────
+
+model SurveyResponse {
+  id               String              @id @default(uuid())
+  clusterId        String              @map("cluster_id")
+  formToken        String              @map("form_token")
+  respondentWallet String              @map("respondent_wallet")
+  respondentEmail  String?             @map("respondent_email")
+
+  status           SurveyResponseStatus @default(IN_PROGRESS)
+  submittedAt      DateTime?           @map("submitted_at")
+  reviewedAt       DateTime?           @map("reviewed_at")
+
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  cluster         Cluster              @relation(fields: [clusterId], references: [id])
+  fieldResponses  SurveyFieldResponse[]
+  vaultClaim      VaultClaim?
+
+  @@unique([clusterId, formToken])
+  @@index([respondentWallet])
+  @@index([clusterId])
+  @@map("survey_responses")
+}
+
+model SurveyFieldResponse {
+  id               String       @id @default(uuid())
+  surveyResponseId String       @map("survey_response_id")
+  fieldCode         String       @map("field_code")
+  value             Json
+
+  // CO review per field
+  coStatus          ReviewStatus @default(PENDING) @map("co_status")
+  coRejectReason    String?      @map("co_reject_reason")
+  reviewedAt        DateTime?    @map("reviewed_at")
+
+  // If approved, link to aggregated field value
+  clusterFieldValueId String?   @map("cluster_field_value_id")
+
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  surveyResponse    SurveyResponse @relation(fields: [surveyResponseId], references: [id], onDelete: Cascade)
+  clusterFieldValue ClusterFieldValue? @relation(fields: [clusterFieldValueId], references: [id])
+
+  @@unique([surveyResponseId, fieldCode])
+  @@index([fieldCode])
+  @@index([coStatus])
+  @@map("survey_field_responses")
+}
+
+// ─── VAULT SYSTEM ──────────────────────────────────────────
+
+model ClusterVault {
+  id              String      @id @default(uuid())
+  clusterId       String      @unique @map("cluster_id")
+  totalPool       Decimal     @default(0) @map("total_pool") @db.Decimal(18, 2)
+  distributed     Decimal     @default(0) @map("distributed") @db.Decimal(18, 2)
+  respondentCount Int         @default(0) @map("respondent_count")
+  status          VaultStatus @default(ACTIVE)
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  cluster Cluster @relation(fields: [clusterId], references: [id])
+  claims  VaultClaim[]
+
+  @@map("cluster_vaults")
+}
+
+model VaultClaim {
+  id                String      @id @default(uuid())
+  vaultId           String      @map("vault_id")
+  surveyResponseId  String      @unique @map("survey_response_id")
+  respondentWallet  String      @map("respondent_wallet")
+  fieldCodes        String[]    @map("field_codes")
+  approvedCount     Int         @default(0) @map("approved_count")
+  amount            Decimal     @map("amount") @db.Decimal(18, 2)
+  status            ClaimStatus @default(PENDING)
+  distributedAt     DateTime?   @map("distributed_at")
+  solTxSignature    String?     @map("sol_tx_signature")
+
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  vault             ClusterVault @relation(fields: [vaultId], references: [id])
+  surveyResponse    SurveyResponse @relation(fields: [surveyResponseId], references: [id])
+
+  @@index([respondentWallet])
+  @@index([vaultId])
+  @@map("vault_claims")
 }

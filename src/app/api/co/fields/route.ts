@@ -5,6 +5,8 @@
  * cluster, including raw field values. If no cluster exists, returns the
  * 20 field definitions with PENDING status and null values.
  *
+ * Now includes survey response counts per field.
+ *
  * Auth: Supabase session + role === 'CLUSTER_OWNER'
  */
 
@@ -12,6 +14,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { TIER_1_FIELDS } from "@/lib/constants/field";
+import { SURVEY_FIELDS, isBulkAcceptField } from "@/lib/constants/survey-fields";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -121,10 +124,56 @@ export async function GET(request: NextRequest) {
 
   const validatedCount = fields.filter(f => f.status === "VALIDATED").length;
 
+  // Get survey response counts per field
+  const surveyFieldCodes = SURVEY_FIELDS.map(f => f.code);
+  const surveyResponseCounts = await prisma.surveyFieldResponse.groupBy({
+    by: ["fieldCode", "coStatus"],
+    where: {
+      fieldCode: { in: surveyFieldCodes },
+      surveyResponse: {
+        clusterId,
+        status: "SUBMITTED",
+      },
+    },
+    _count: true,
+  });
+
+  // Build survey response stats per field
+  const surveyStats: Record<string, { total: number; pending: number; approved: number; rejected: number }> = {};
+  for (const stat of surveyResponseCounts) {
+    if (!surveyStats[stat.fieldCode]) {
+      surveyStats[stat.fieldCode] = { total: 0, pending: 0, approved: 0, rejected: 0 };
+    }
+    surveyStats[stat.fieldCode].total += stat._count;
+    if (stat.coStatus === "PENDING") surveyStats[stat.fieldCode].pending = stat._count;
+    if (stat.coStatus === "APPROVED") surveyStats[stat.fieldCode].approved = stat._count;
+    if (stat.coStatus === "REJECTED") surveyStats[stat.fieldCode].rejected = stat._count;
+  }
+
+  // Generate survey link
+  const surveyToken = `cluster-${clusterId}-survey`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://lokal.id";
+  const surveyLink = `${baseUrl}/survey/${clusterSlug}?token=${surveyToken}`;
+
+  // Merge survey stats with field data
+  const fieldsWithSurveyStats = fields.map(field => {
+    const surveyStat = surveyStats[field.fieldCode];
+    const isSurveyField = surveyFieldCodes.includes(field.fieldCode);
+    
+    return {
+      ...field,
+      isSurveyField,
+      surveyResponses: surveyStat || { total: 0, pending: 0, approved: 0, rejected: 0 },
+      canBulkAccept: isBulkAcceptField(field.fieldCode),
+    };
+  });
+
   return NextResponse.json({
     clusterSlug,
     total: fields.length,
     validated: validatedCount,
-    fields,
+    surveyLink,
+    surveyToken,
+    fields: fieldsWithSurveyStats,
   });
 }
