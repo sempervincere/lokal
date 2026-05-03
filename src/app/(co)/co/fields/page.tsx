@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Link2, Copy, Check, Users, ExternalLink } from 'lucide-react';
+import { Link2, Copy, Check, Users, ExternalLink, ClipboardList, Eye, Search, BarChart3, MapPin, ShieldCheck } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface SurveyResponses {
   total: number;
@@ -27,6 +27,24 @@ interface FieldData {
   surveyResponses: SurveyResponses;
   canBulkAccept: boolean;
 }
+
+interface ClusterInfo {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+const METHOD_ICON: Record<string, React.ReactNode> = {
+  SURVEY: <ClipboardList size={14} color={T.p600} />,
+  OBSERVATION: <Eye size={14} color={T.info} />,
+  RESEARCH: <Search size={14} color={T.warning} />,
+};
+
+const METHOD_LABEL: Record<string, string> = {
+  SURVEY: 'Survei',
+  OBSERVATION: 'Observasi',
+  RESEARCH: 'Riset',
+};
 
 function formatFieldValue(field: FieldData): string {
   const v = field.value;
@@ -114,8 +132,12 @@ function formatFieldValue(field: FieldData): string {
 
 export default function COFieldsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlClusterSlug = searchParams.get('cluster');
+
   const [fields, setFields] = useState<FieldData[]>([]);
-  const [clusterSlug, setClusterSlug] = useState('depok-margonda-001');
+  const [clusters, setClusters] = useState<ClusterInfo[]>([]);
+  const [clusterSlug, setClusterSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('all');
@@ -128,21 +150,24 @@ export default function COFieldsPage() {
   });
 
   useEffect(() => {
-    fetch('/api/co/fields')
+    setLoading(true);
+    const slugParam = urlClusterSlug ? `?clusterSlug=${encodeURIComponent(urlClusterSlug)}` : '';
+    fetch(`/api/co/fields${slugParam}`)
       .then(r => { if (!r.ok) throw new Error('Gagal memuat'); return r.json(); })
       .then(data => {
         setFields(data.fields);
+        setClusters(data.clusters || []);
         setClusterSlug(data.clusterSlug);
         setSurveyLink(data.surveyLink || '');
-        
+
         // Calculate survey stats
-        const totalResponses = data.fields.reduce((sum: number, f: FieldData) => 
-          sum + (f.surveyResponses?.total || 0), 0) / 15; // Divide by 15 survey fields
-        const pendingCount = data.fields.reduce((sum: number, f: FieldData) => 
+        const totalResponses = data.fields.reduce((sum: number, f: FieldData) =>
+          sum + (f.surveyResponses?.total || 0), 0) / 15;
+        const pendingCount = data.fields.reduce((sum: number, f: FieldData) =>
           sum + (f.surveyResponses?.pending || 0), 0);
-        const approvedCount = data.fields.reduce((sum: number, f: FieldData) => 
+        const approvedCount = data.fields.reduce((sum: number, f: FieldData) =>
           sum + (f.surveyResponses?.approved || 0), 0);
-        
+
         setSurveyStats({
           totalResponses: Math.round(totalResponses),
           pendingCount,
@@ -151,7 +176,7 @@ export default function COFieldsPage() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [urlClusterSlug]);
 
   function copySurveyLink() {
     navigator.clipboard.writeText(surveyLink).then(() => {
@@ -159,6 +184,12 @@ export default function COFieldsPage() {
       setTimeout(() => setSurveyLinkCopied(false), 2000);
     });
   }
+
+  const switchCluster = (slug: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('cluster', slug);
+    router.push(`/co/fields?${params.toString()}`);
+  };
 
   if (loading) {
     return (
@@ -179,76 +210,131 @@ export default function COFieldsPage() {
   const validated = fields.filter(f => f.status === 'VALIDATED').length;
   const filtered = filter === 'all' ? fields : fields.filter(f => f.status === filter);
 
+  // Build tabs list: real clusters + placeholder for visualization
+  const activeCluster = clusterSlug ? clusters.find(c => c.slug === clusterSlug) || clusters[0] : clusters[0];
+  const allTabs: ClusterInfo[] = clusters.length > 1
+    ? clusters
+    : activeCluster
+      ? [
+          activeCluster,
+          { id: 'placeholder-1', slug: 'jakarta-kemang-001', name: 'Kemang' },
+          { id: 'placeholder-2', slug: 'bsd-raya-001', name: 'BSD Raya' },
+        ]
+      : [];
+
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-      {/* Survey Link Section */}
-      <div style={{
-        background: T.p100, border: `1px solid ${T.p600}22`, borderRadius: 14,
-        padding: '16px 20px', marginBottom: 24,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: T.p600, marginBottom: 4 }}>
-              Link Survey Cluster
-            </div>
-            <div style={{
-              fontSize: 12, color: T.g500, fontFamily: 'var(--font-mono), monospace',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {surveyLink}
-            </div>
+      {/* Cluster Switcher Tabs — always visible */}
+      {allTabs.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {allTabs.map((c) => {
+              const isActive = c.slug === clusterSlug;
+              const isPlaceholder = c.id.startsWith('placeholder');
+              return (
+                <button
+                  key={c.slug}
+                  onClick={() => !isPlaceholder && switchCluster(c.slug)}
+                  disabled={isPlaceholder}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+                    fontFamily: 'inherit', border: 'none', cursor: isPlaceholder ? 'not-allowed' : 'pointer', transition: 'all 150ms',
+                    background: isActive ? T.p600 : isPlaceholder ? T.c100 : '#fff',
+                    color: isActive ? '#fff' : isPlaceholder ? T.g500 : T.g700,
+                    boxShadow: isActive ? '0 2px 8px rgba(27,122,101,0.25)' : `inset 0 0 0 1px ${T.c200}`,
+                    opacity: isPlaceholder ? 0.6 : 1,
+                  }}
+                >
+                  <MapPin size={14} />
+                  <span>{c.name}</span>
+                  {isActive && <ShieldCheck size={14} style={{ opacity: 0.8 }} />}
+                  {isPlaceholder && (
+                    <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: T.c200, color: T.g500 }}>
+                      SOON
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          <button onClick={copySurveyLink} style={{
-            display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9,
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-            background: surveyLinkCopied ? T.success : T.p600, color: T.c50, flexShrink: 0, transition: 'background 200ms',
-          }}>
-            <Link2 size={14} color={T.c50} />
-            {surveyLinkCopied ? 'Tersalin!' : 'Salin Link'}
-          </button>
         </div>
+      )}
 
-        {/* Survey Stats */}
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Users size={16} color={T.p600} />
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.totalResponses}</div>
-              <div style={{ fontSize: 11, color: T.g500 }}>Total Responden</div>
+      {/* Survey Link Section */}
+      {surveyLink && (
+        <div style={{
+          background: T.p100, border: `1px solid ${T.p600}22`, borderRadius: 14,
+          padding: '16px 20px', marginBottom: 24,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.p600, marginBottom: 4 }}>
+                Link Survey Cluster
+              </div>
+              <div style={{
+                fontSize: 12, color: T.g500, fontFamily: 'var(--font-mono), monospace',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {surveyLink}
+              </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 16, height: 16, borderRadius: '50%', background: T.warning + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: T.warning }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.pendingCount}</div>
-              <div style={{ fontSize: 11, color: T.g500 }}>Pending Review</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Check size={16} color={T.success} />
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.approvedCount}</div>
-              <div style={{ fontSize: 11, color: T.g500 }}>Diterima</div>
-            </div>
-          </div>
-          
-          {surveyStats.pendingCount > 0 && (
-            <button
-              onClick={() => router.push('/co/survey-responses')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9,
-                border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
-                background: T.e600, color: T.c50, marginLeft: 'auto', transition: 'background 200ms',
-              }}
-            >
-              <ExternalLink size={14} color={T.c50} />
-              Review Survey ({surveyStats.pendingCount})
+            <button onClick={copySurveyLink} style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9,
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+              background: surveyLinkCopied ? T.success : T.p600, color: T.c50, flexShrink: 0, transition: 'background 200ms',
+            }}>
+              <Link2 size={14} color={T.c50} />
+              {surveyLinkCopied ? 'Tersalin!' : 'Salin Link'}
             </button>
-          )}
+          </div>
+
+          {/* Survey Stats */}
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Users size={16} color={T.p600} />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.totalResponses}</div>
+                <div style={{ fontSize: 11, color: T.g500 }}>Total Responden</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', background: T.warning + '20', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: T.warning }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.pendingCount}</div>
+                <div style={{ fontSize: 11, color: T.g500 }}>Pending Review</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Check size={16} color={T.success} />
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: T.g900 }}>{surveyStats.approvedCount}</div>
+                <div style={{ fontSize: 11, color: T.g500 }}>Diterima</div>
+              </div>
+            </div>
+
+            {surveyStats.pendingCount > 0 && (
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (clusterSlug) params.set('cluster', clusterSlug);
+                  router.push(`/co/survey-responses?${params.toString()}`);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9,
+                  border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+                  background: T.e600, color: T.c50, marginLeft: 'auto', transition: 'background 200ms',
+                }}
+              >
+                <ExternalLink size={14} color={T.c50} />
+                Review Survey ({surveyStats.pendingCount})
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Fields Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
@@ -298,8 +384,9 @@ export default function COFieldsPage() {
                   )}
                 </td>
                 <td style={{ padding: '13px 16px' }}>
-                  <span style={{ fontSize: 12, color: T.g500 }}>
-                    {f.collectionMethod === 'SURVEY' ? 'Survei' : f.collectionMethod === 'OBSERVATION' ? 'Observasi' : f.collectionMethod === 'RESEARCH' ? 'Riset' : f.collectionMethod}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.g500 }}>
+                    {METHOD_ICON[f.collectionMethod] || <BarChart3 size={14} color={T.g500} />}
+                    {METHOD_LABEL[f.collectionMethod] || f.collectionMethod}
                   </span>
                 </td>
                 <td style={{ padding: '13px 16px', fontSize: 12, color: f.status === 'VALIDATED' ? T.g700 : T.g500, maxWidth: 220 }}>

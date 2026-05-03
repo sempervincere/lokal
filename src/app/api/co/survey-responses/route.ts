@@ -40,24 +40,37 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get CO's cluster
+    // Get CO's clusters
     const co = await prisma.clusterOwner.findUnique({
       where: { userId: user.id },
-      include: { clusters: { select: { id: true, slug: true, name: true }, take: 1 } },
+      include: { clusters: { select: { id: true, slug: true, name: true }, orderBy: { createdAt: 'desc' } } },
     });
 
     if (!co || co.clusters.length === 0) {
       return NextResponse.json({
         cluster: null,
+        clusters: [],
         responses: [],
         stats: {},
       });
     }
 
-    const cluster = co.clusters[0];
-
     // Parse query params
     const { searchParams } = new URL(request.url);
+    const clusterSlugFilter = searchParams.get("clusterSlug");
+
+    // Find target cluster: by slug if provided, else first cluster
+    const cluster = clusterSlugFilter
+      ? co.clusters.find(c => c.slug === clusterSlugFilter)
+      : co.clusters[0];
+
+    if (!cluster) {
+      return NextResponse.json(
+        { error: "CLUSTER_NOT_FOUND", message: "Cluster tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
     const fieldCodeFilter = searchParams.get("fieldCode");
     const statusFilter = searchParams.get("status");
     const page = parseInt(searchParams.get("page") || "1");
@@ -157,6 +170,11 @@ export async function GET(request: NextRequest) {
         slug: cluster.slug,
         name: cluster.name,
       },
+      clusters: co.clusters.map(c => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+      })),
       surveyLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://lokal.id"}/survey/${cluster.slug}?token=cluster-${cluster.id}-survey`,
       stats: {
         totalResponses: totalSurveyResponses,

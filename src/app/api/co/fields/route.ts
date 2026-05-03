@@ -40,13 +40,18 @@ export async function GET(request: NextRequest) {
 
   const co = await prisma.clusterOwner.findUnique({
     where: { userId: user.id },
-    include: { clusters: { select: { id: true, slug: true }, take: 1 } },
+    include: { clusters: { select: { id: true, slug: true, name: true }, orderBy: { createdAt: 'desc' } } },
   });
+
+  // Parse clusterSlug from query params
+  const { searchParams } = new URL(request.url);
+  const clusterSlugFilter = searchParams.get("clusterSlug");
 
   if (!co || co.clusters.length === 0) {
     // No cluster yet — return field definitions with empty data
     return NextResponse.json({
       clusterSlug: null,
+      clusters: [],
       total: 20,
       validated: 0,
       fields: TIER_1_FIELDS.map((f) => ({
@@ -69,8 +74,19 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const clusterId = co.clusters[0].id;
-  const clusterSlug = co.clusters[0].slug;
+  const cluster = clusterSlugFilter
+    ? co.clusters.find(c => c.slug === clusterSlugFilter)
+    : co.clusters[0];
+
+  if (!cluster) {
+    return NextResponse.json(
+      { error: "CLUSTER_NOT_FOUND", message: "Cluster tidak ditemukan" },
+      { status: 404 }
+    );
+  }
+
+  const clusterId = cluster.id;
+  const clusterSlug = cluster.slug;
 
   const fieldValues = await prisma.clusterFieldValue.findMany({
     where: { clusterId },
@@ -170,6 +186,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     clusterSlug,
+    clusters: co.clusters.map(c => ({ id: c.id, slug: c.slug, name: c.name })),
     total: fields.length,
     validated: validatedCount,
     surveyLink,

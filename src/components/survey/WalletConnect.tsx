@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Loader2, Wallet, Mail, ChevronRight, Info } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 
@@ -15,13 +15,14 @@ interface WalletConnectProps {
 
 const S = {
   card: { background: '#fff', borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
-  btnPrimary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.c50, background: T.p600, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
-  btnSecondary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: `1.5px solid ${T.c200}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.g700, background: T.c50, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
+  btnPrimary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 9999, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: T.c50, background: T.p600, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
+  btnEmail: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 9999, border: `2px solid ${T.p600}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, color: T.p600, background: T.p100, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
   input: { width: '100%', padding: '12px 16px 12px 40px', borderRadius: 12, border: `1px solid ${T.c200}`, fontFamily: 'inherit', fontSize: 14, color: T.g900, background: '#fff', outline: 'none', transition: 'border-color 150ms' } as React.CSSProperties,
 };
 
 export function WalletConnect({ onConnect, onDisconnect, isConnected, connectedWallet }: WalletConnectProps) {
   const { publicKey, connected, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
   const [tiplinkEmail, setTiplinkEmail] = useState('');
   const [tiplinkLoading, setTiplinkLoading] = useState(false);
   const [showTiplink, setShowTiplink] = useState(false);
@@ -91,7 +92,7 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected, connectedW
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 480, margin: '0 auto', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
       {/* Main connect card */}
       <div style={{ ...S.card, padding: '32px 28px' }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
@@ -102,12 +103,17 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected, connectedW
           <p style={{ fontSize: 13, color: T.g500, lineHeight: 1.5 }}>Kamu perlu hubungkan dompet untuk mengisi survey dan menerima reward</p>
         </div>
 
-        {/* Phantom / Solana Wallet — centered */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-          <div style={{ width: '100%', maxWidth: 320 }}>
-            <WalletMultiButton />
-          </div>
-        </div>
+        {/* Custom Wallet Button — full width, matching email button */}
+        <button
+          onClick={() => setVisible(true)}
+          style={{
+            ...S.btnPrimary,
+            marginBottom: 20,
+          }}
+        >
+          <Wallet size={18} />
+          Select Wallet
+        </button>
 
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -120,9 +126,9 @@ export function WalletConnect({ onConnect, onDisconnect, isConnected, connectedW
         {!showTiplink ? (
           <button
             onClick={() => setShowTiplink(true)}
-            style={S.btnSecondary}
+            style={S.btnEmail}
           >
-            <Mail size={16} color={T.g700} />
+            <Mail size={18} color={T.p600} />
             Lanjut dengan Email
           </button>
         ) : (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletConnect } from '@/components/survey/WalletConnect';
 import { SurveyWizard } from '@/components/survey/SurveyWizard';
@@ -23,7 +24,7 @@ interface ClusterInfo {
 /* ─── Shared style tokens ─── */
 const S = {
   page: { minHeight: '100vh', background: T.c50, fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif" } as React.CSSProperties,
-  container: { maxWidth: 680, margin: '0 auto', padding: '24px 16px' } as React.CSSProperties,
+  container: { maxWidth: 560, margin: '0 auto', padding: '24px 16px' } as React.CSSProperties,
   card: { background: '#fff', borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
   btnPrimary: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.c50, background: T.p600, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
 };
@@ -154,18 +155,12 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
   /* ─── Main Survey State ─── */
   return (
     <div style={S.page}>
-      {/* Header */}
+      {/* Header — LOKAL Logo Only */}
       <div style={{ background: '#fff', borderBottom: `1px solid ${T.c200}`, position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 680, margin: '0 auto', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <MapPin size={18} color={T.p600} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 14, fontWeight: 700, color: T.g900, marginBottom: 1 }}>Survey LOKAL</h1>
-              <p style={{ fontSize: 11, color: T.g500 }}>{cluster.name}</p>
-            </div>
-          </div>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Image src="/logo.png" alt="LOKAL" width={80} height={28} style={{ objectFit: 'contain' }} />
+          </a>
 
           {/* Wallet info + disconnect */}
           {wallet && (
@@ -220,7 +215,7 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
           </div>
         </div>
 
-        {/* Wallet connection or Survey form */}
+        {/* Wallet connection or Survey form — full width within container */}
         {!wallet ? (
           <WalletConnect onConnect={handleWalletConnect} onDisconnect={handleDisconnect} />
         ) : (
