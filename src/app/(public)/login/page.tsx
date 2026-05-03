@@ -59,10 +59,12 @@ function AuthPageInner() {
         // Sync on every login in case the record was missing
         await fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
 
-        // Route based on role — CO goes to /co/dashboard, BO goes to /dashboard
+        // Route based on role — ADMIN goes to /admin, CO goes to /co/dashboard, BO goes to /dashboard
         const { data: { user: signedInUser } } = await supabase.auth.getUser();
         const userRole = signedInUser?.user_metadata?.role;
-        window.location.href = userRole === 'CLUSTER_OWNER' ? '/co/dashboard' : '/dashboard';
+        if (userRole === 'ADMIN') window.location.href = '/admin';
+        else if (userRole === 'CLUSTER_OWNER') window.location.href = '/co/dashboard';
+        else window.location.href = '/dashboard';
       }
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan. Coba lagi.');
