@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Activity, FileText, DollarSign, MapPin, LogOut, Award, Wallet, User, ShieldCheck } from 'lucide-react';
+import { Activity, FileText, DollarSign, MapPin, LogOut, Award, Wallet, User, ShieldCheck, ClipboardList } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { T } from '@/lib/constants/mock-data';
 import { createClient } from '@/lib/supabase/client';
@@ -13,11 +13,12 @@ import { getCoTier } from '@/lib/constants/pricing';
 import { CoContext, CoContextValue } from '@/lib/co-context';
 
 const NAV_ITEMS = [
-  { id: 'overview',      href: '/co/dashboard',             icon: Activity,    label: 'Overview' },
-  { id: 'clusters-list', href: '/co/dashboard/clusters',   icon: MapPin,      label: 'Clusters' },
-  { id: 'fields',        href: '/co/fields',                icon: FileText,    label: 'Data Fields' },
-  { id: 'earnings',      href: '/co/earnings',              icon: DollarSign,  label: 'Pendapatan' },
-  { id: 'profile',       href: '/co/profile',               icon: User,        label: 'Profil' },
+  { id: 'overview',         href: '/co/dashboard',             icon: Activity,     label: 'Overview' },
+  { id: 'clusters-list',    href: '/co/dashboard/clusters',   icon: MapPin,       label: 'Clusters' },
+  { id: 'fields',           href: '/co/fields',                icon: FileText,     label: 'Data Fields' },
+  { id: 'survey-responses', href: '/co/survey-responses',      icon: ClipboardList, label: 'Survey Responses' },
+  { id: 'earnings',         href: '/co/earnings',              icon: DollarSign,   label: 'Pendapatan' },
+  { id: 'profile',          href: '/co/profile',               icon: User,         label: 'Profil' },
 ];
 
 const KYC_BYPASS_EMAILS = ['dylansius.putra@gmail.com'];
