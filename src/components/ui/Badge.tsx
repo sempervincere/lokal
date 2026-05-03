@@ -6,6 +6,7 @@ interface BadgeProps {
   children: React.ReactNode;
   variant?: Variant;
   style?: React.CSSProperties;
+  className?: string;
 }
 
 const variantStyles: Record<Variant, { bg: string; color: string }> = {
@@ -19,10 +20,10 @@ const variantStyles: Record<Variant, { bg: string; color: string }> = {
   success: { bg: T.p100, color: T.p600 },
 };
 
-export function Badge({ children, variant = 'active', style = {} }: BadgeProps) {
+export function Badge({ children, variant = 'active', style = {}, className }: BadgeProps) {
   const v = variantStyles[variant];
   return (
-    <span style={{
+    <span className={className} style={{
       display: 'inline-flex',
       alignItems: 'center',
       gap: 4,

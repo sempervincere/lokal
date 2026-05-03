@@ -27,7 +27,7 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
   const { connected, publicKey, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
 
-  const activePage = NAV_ITEMS.find(n => pathname.startsWith(n.href))?.id ?? 'overview';
+  const activePage = [...NAV_ITEMS].sort((a, b) => b.href.length - a.href.length).find(n => pathname.startsWith(n.href))?.id ?? 'overview';
   const [ready, setReady] = useState(false);
   const [coData, setCoData] = useState<CoContextValue | null>(null);
   const [coInfo, setCoInfo] = useState<{ fullName: string; coScore: number; kycCompleted: boolean } | null>(null);
