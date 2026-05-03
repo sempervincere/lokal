@@ -222,7 +222,7 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
 
         {/* Wallet connection or Survey form */}
         {!wallet ? (
-          <WalletConnect onConnect={handleWalletConnect} />
+          <WalletConnect onConnect={handleWalletConnect} onDisconnect={handleDisconnect} />
         ) : (
           <SurveyWizard
             wallet={wallet}

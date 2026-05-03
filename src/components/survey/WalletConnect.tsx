@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Loader2, Wallet, Mail, ChevronRight, Info } from 'lucide-react';
@@ -8,6 +8,7 @@ import { T } from '@/lib/constants/mock-data';
 
 interface WalletConnectProps {
   onConnect: (wallet: string, email?: string) => void;
+  onDisconnect?: () => void;
   isConnected?: boolean;
   connectedWallet?: string | null;
 }
@@ -19,18 +20,30 @@ const S = {
   input: { width: '100%', padding: '12px 16px 12px 40px', borderRadius: 12, border: `1px solid ${T.c200}`, fontFamily: 'inherit', fontSize: 14, color: T.g900, background: '#fff', outline: 'none', transition: 'border-color 150ms' } as React.CSSProperties,
 };
 
-export function WalletConnect({ onConnect, isConnected, connectedWallet }: WalletConnectProps) {
+export function WalletConnect({ onConnect, onDisconnect, isConnected, connectedWallet }: WalletConnectProps) {
   const { publicKey, connected, disconnect } = useWallet();
   const [tiplinkEmail, setTiplinkEmail] = useState('');
   const [tiplinkLoading, setTiplinkLoading] = useState(false);
   const [showTiplink, setShowTiplink] = useState(false);
   const [inputFocus, setInputFocus] = useState(false);
+  const wasDisconnectedRef = useRef(false);
 
   useEffect(() => {
+    // Don't reconnect if user just disconnected
+    if (wasDisconnectedRef.current) {
+      wasDisconnectedRef.current = false;
+      return;
+    }
     if (connected && publicKey) {
       onConnect(publicKey.toString());
     }
   }, [connected, publicKey, onConnect]);
+
+  const handleDisconnect = useCallback(() => {
+    wasDisconnectedRef.current = true;
+    disconnect();
+    onDisconnect?.();
+  }, [disconnect, onDisconnect]);
 
   const handleTiplinkConnect = useCallback(async () => {
     if (!tiplinkEmail || !tiplinkEmail.includes('@')) return;
@@ -67,7 +80,7 @@ export function WalletConnect({ onConnect, isConnected, connectedWallet }: Walle
             </div>
           </div>
           <button
-            onClick={() => disconnect()}
+            onClick={handleDisconnect}
             style={{ fontSize: 12, color: T.danger, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontFamily: 'inherit' }}
           >
             Putus

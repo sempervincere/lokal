@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { callAnthropicSync } from '@/lib/ai/anthropicClient';
 import { getCoShareByIdrx } from '@/lib/constants/pricing';
+import { allocateSessionToVault } from '@/lib/vault/allocation';
 
 interface ConceptFormInput {
   fbSubcategory: string;
@@ -246,6 +247,14 @@ export async function generateReport(sessionId: string): Promise<void> {
             sessionId,
           },
         });
+      }
+
+      // Vault allocation: 8% of session revenue to respondent vault
+      try {
+        await allocateSessionToVault(session.clusterId, sessionId);
+      } catch (vaultErr) {
+        // Non-blocking: vault allocation failure should not break report generation
+        console.error('[generateReport] Vault allocation failed (non-blocking):', vaultErr);
       }
     });
   } catch (err) {
