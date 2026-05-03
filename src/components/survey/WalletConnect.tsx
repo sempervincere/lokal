@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { PublicKey } from '@solana/web3.js';
 import { Loader2, Wallet, Mail, ChevronRight, Info } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 
@@ -14,15 +13,14 @@ interface WalletConnectProps {
 }
 
 const S = {
-  card: { background: T.c50, borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
+  card: { background: '#fff', borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
   btnPrimary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.c50, background: T.p600, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
   btnSecondary: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: `1.5px solid ${T.c200}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.g700, background: T.c50, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
   input: { width: '100%', padding: '12px 16px 12px 40px', borderRadius: 12, border: `1px solid ${T.c200}`, fontFamily: 'inherit', fontSize: 14, color: T.g900, background: '#fff', outline: 'none', transition: 'border-color 150ms' } as React.CSSProperties,
 };
 
 export function WalletConnect({ onConnect, isConnected, connectedWallet }: WalletConnectProps) {
-  const { publicKey, connected, connecting, disconnect } = useWallet();
-  const { connection } = useConnection();
+  const { publicKey, connected, disconnect } = useWallet();
   const [tiplinkEmail, setTiplinkEmail] = useState('');
   const [tiplinkLoading, setTiplinkLoading] = useState(false);
   const [showTiplink, setShowTiplink] = useState(false);
@@ -80,24 +78,26 @@ export function WalletConnect({ onConnect, isConnected, connectedWallet }: Walle
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 480, margin: '0 auto', width: '100%' }}>
       {/* Main connect card */}
-      <div style={{ ...S.card, padding: 28 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-            <Wallet size={26} color={T.p600} />
+      <div style={{ ...S.card, padding: '32px 28px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Wallet size={28} color={T.p600} />
           </div>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: T.g900, marginBottom: 4 }}>Hubungkan Dompet</h3>
-          <p style={{ fontSize: 13, color: T.g500 }}>Kamu perlu hubungkan dompet untuk mengisi survey</p>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Hubungkan Dompet</h3>
+          <p style={{ fontSize: 13, color: T.g500, lineHeight: 1.5 }}>Kamu perlu hubungkan dompet untuk mengisi survey dan menerima reward</p>
         </div>
 
-        {/* Phantom / Solana Wallet */}
-        <div style={{ marginBottom: 16 }}>
-          <WalletMultiButton style={{ width: '100%', background: T.p600, color: '#fff', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, padding: '12px 24px', borderRadius: 9999, border: 'none', cursor: 'pointer' }} />
+        {/* Phantom / Solana Wallet — centered */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <div style={{ width: '100%', maxWidth: 320 }}>
+            <WalletMultiButton />
+          </div>
         </div>
 
         {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{ flex: 1, height: 1, background: T.c200 }} />
           <span style={{ fontSize: 11, color: T.g500, fontWeight: 500 }}>atau</span>
           <div style={{ flex: 1, height: 1, background: T.c200 }} />

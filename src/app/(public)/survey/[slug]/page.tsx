@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletConnect } from '@/components/survey/WalletConnect';
 import { SurveyWizard } from '@/components/survey/SurveyWizard';
-import { CheckCircle2, MapPin, Users, Clock, ClipboardList } from 'lucide-react';
+import { CheckCircle2, MapPin, Users, Clock, ClipboardList, Wallet, LogOut, Mail } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 
 interface SurveyPageProps {
@@ -22,8 +23,8 @@ interface ClusterInfo {
 /* ─── Shared style tokens ─── */
 const S = {
   page: { minHeight: '100vh', background: T.c50, fontFamily: "var(--font-jakarta), 'Plus Jakarta Sans', sans-serif" } as React.CSSProperties,
-  container: { maxWidth: 640, margin: '0 auto', padding: '32px 24px' } as React.CSSProperties,
-  card: { background: T.c50, borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
+  container: { maxWidth: 680, margin: '0 auto', padding: '24px 16px' } as React.CSSProperties,
+  card: { background: '#fff', borderRadius: 16, border: `1px solid ${T.c200}`, overflow: 'hidden' } as React.CSSProperties,
   btnPrimary: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 24px', borderRadius: 9999, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, color: T.c50, background: T.p600, cursor: 'pointer', transition: 'all 150ms', width: '100%' } as React.CSSProperties,
 };
 
@@ -31,6 +32,7 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
   const { slug } = params;
   const { token } = searchParams;
   const router = useRouter();
+  const { connected, disconnect } = useWallet();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +55,12 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
     setWallet(walletAddress);
     if (emailAddress) setEmail(emailAddress);
   }, []);
+
+  const handleDisconnect = useCallback(() => {
+    disconnect();
+    setWallet(null);
+    setEmail(null);
+  }, [disconnect]);
 
   const handleSurveyComplete = useCallback(() => {
     setSubmitted(true);
@@ -147,27 +155,60 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
   return (
     <div style={S.page}>
       {/* Header */}
-      <div style={{ background: T.c50, borderBottom: `1px solid ${T.c200}`, position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <MapPin size={20} color={T.p600} />
+      <div style={{ background: '#fff', borderBottom: `1px solid ${T.c200}`, position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <MapPin size={18} color={T.p600} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: 14, fontWeight: 700, color: T.g900, marginBottom: 1 }}>Survey LOKAL</h1>
+              <p style={{ fontSize: 11, color: T.g500 }}>{cluster.name}</p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 2 }}>Survey LOKAL</h1>
-            <p style={{ fontSize: 12, color: T.g500 }}>{cluster.name}</p>
-          </div>
+
+          {/* Wallet info + disconnect */}
+          {wallet && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: T.c100, borderRadius: 9999 }}>
+                {email ? (
+                  <Mail size={14} color={T.p600} />
+                ) : (
+                  <Wallet size={14} color={T.p600} />
+                )}
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.g700, fontFamily: 'var(--font-mono), monospace' }}>
+                  {wallet.slice(0, 5)}...{wallet.slice(-4)}
+                </span>
+              </div>
+              <button
+                onClick={handleDisconnect}
+                style={{
+                  padding: '6px 10px', borderRadius: 8, border: 'none',
+                  background: 'transparent', cursor: 'pointer', color: T.danger,
+                  fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  transition: 'all 150ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = `${T.danger}10`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <LogOut size={14} />
+                <span style={{ display: 'none' }}>Putus</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       <div style={S.container}>
         {/* Info card */}
-        <div style={{ ...S.card, padding: '20px 20px 20px 18px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <ClipboardList size={22} color={T.p600} />
+        <div style={{ ...S.card, padding: '20px', marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <ClipboardList size={20} color={T.p600} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 4 }}>{cluster.name}</h2>
-            <p style={{ fontSize: 12, color: T.g500, marginBottom: 12 }}>{cluster.location}</p>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 3 }}>{cluster.name}</h2>
+            <p style={{ fontSize: 12, color: T.g500, marginBottom: 10 }}>{cluster.location}</p>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: T.g500 }}>
                 <Users size={14} color={T.g500} />15 pertanyaan
@@ -188,6 +229,7 @@ export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
             email={email || undefined}
             clusterSlug={slug}
             clusterName={cluster.name}
+            token={token || ''}
             onComplete={handleSurveyComplete}
           />
         )}

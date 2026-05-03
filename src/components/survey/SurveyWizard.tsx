@@ -15,6 +15,7 @@ interface SurveyWizardProps {
   email?: string;
   clusterSlug: string;
   clusterName: string;
+  token: string;
   onComplete: () => void;
 }
 
@@ -52,7 +53,7 @@ const STEPS: StepConfig[] = [
   { id: 'CULTURAL',      label: 'Budaya & Akses', description: 'Soal selera dan akses ke area ini',                      component: CulturalStep,      icon: <Target size={18} />,      accent: STEP_ACCENTS.CULTURAL.color,     accentBg: STEP_ACCENTS.CULTURAL.bg },
 ];
 
-export function SurveyWizard({ wallet, email, clusterSlug, clusterName, onComplete }: SurveyWizardProps) {
+export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, onComplete }: SurveyWizardProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [values, setValues] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -93,7 +94,6 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, onComple
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const token = `cluster-${clusterSlug}-survey`;
       const response = await fetch(`/api/survey/${clusterSlug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
