@@ -1,14 +1,7 @@
 import type { Metadata } from 'next';
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google';
-import dynamic from 'next/dynamic';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import './globals.css';
-
-// Defer wallet adapter bundle (~100KB) — not needed on login/public pages
-const SolanaWalletProvider = dynamic(
-  () => import('@/components/providers/WalletProvider').then(m => m.SolanaWalletProvider),
-  { ssr: false, loading: () => null },
-);
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -38,10 +31,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${jakarta.variable} ${mono.variable}`}>
       <body className={`${jakarta.className} antialiased bg-cream-50 text-warmgray-900`}>
-        {/* SolanaWalletProvider is a Client Component — safe to import here */}
-        <SolanaWalletProvider>
-          {children}
-        </SolanaWalletProvider>
+        {children}
       </body>
     </html>
   );

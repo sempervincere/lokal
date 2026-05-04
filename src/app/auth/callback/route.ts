@@ -2,11 +2,12 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { syncUserToDB, extractUserPayload } from '@/lib/supabase/syncUser';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // role param is set by handleGoogle() on the login page
+  // role param is set by handleGoogle() on the login page — used for FIRST-TIME stamp only
   const roleParam = searchParams.get('role');
 
   if (code) {
@@ -34,21 +35,32 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        // If Google OAuth user has no role in metadata yet, stamp the one chosen on the login page
+        // Stamp role for first-time Google OAuth users
         if (roleParam && !user.user_metadata?.role) {
           await supabase.auth.updateUser({ data: { role: roleParam } });
         }
 
-        // Re-fetch user so payload has the freshly stamped role
         const { data: { user: freshUser } } = await supabase.auth.getUser();
         const payload = extractUserPayload(freshUser ?? user);
         if (payload) {
           await syncUserToDB(payload);
         }
 
-        // Route to the correct dashboard based on role
-        const finalRole = freshUser?.user_metadata?.role ?? roleParam;
-        const dest = finalRole === 'CLUSTER_OWNER' ? '/co/dashboard' : '/dashboard';
+        // Route based on ACTUAL DB role — source of truth
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        });
+
+        const dbRole = dbUser?.role ?? roleParam;
+        let dest: string;
+        if (dbRole === 'CLUSTER_OWNER') {
+          dest = '/co/kyc';
+        } else if (dbRole === 'ADMIN') {
+          dest = '/admin';
+        } else {
+          dest = '/dashboard';
+        }
         return NextResponse.redirect(`${origin}${dest}`);
       }
     }

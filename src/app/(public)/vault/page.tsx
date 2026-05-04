@@ -6,6 +6,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { Wallet, TrendingUp, Clock, CheckCircle2, Loader2, Download, ArrowRight, AlertTriangle, Inbox, FileText, ShieldCheck, Coins, LogOut } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
+import { PublicWalletProvider } from '@/components/providers/PublicWalletProvider';
 
 interface VaultClaim {
   id: string;
@@ -49,6 +50,14 @@ const S = {
 };
 
 export default function VaultPage() {
+  return (
+    <PublicWalletProvider>
+      <VaultPageInner />
+    </PublicWalletProvider>
+  );
+}
+
+function VaultPageInner() {
   const router = useRouter();
   const { publicKey, connected, disconnect } = useWallet();
 

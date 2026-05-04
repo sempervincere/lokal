@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Activity, FileText, DollarSign, MapPin, LogOut, Award, Wallet, User, ShieldCheck, ClipboardList } from 'lucide-react';
@@ -11,6 +12,12 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { getCoTier } from '@/lib/constants/pricing';
 import { CoContext, CoContextValue } from '@/lib/co-context';
+import dynamic from 'next/dynamic';
+
+const SolanaWalletProvider = dynamic(
+  () => import('@/components/providers/WalletProvider').then(m => m.SolanaWalletProvider),
+  { ssr: false, loading: () => null },
+);
 
 const NAV_ITEMS = [
   { id: 'overview',         href: '/co/dashboard',             icon: Activity,     label: 'Overview' },
@@ -24,6 +31,14 @@ const NAV_ITEMS = [
 const KYC_BYPASS_EMAILS = ['dylansius.putra@gmail.com'];
 
 export default function COLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SolanaWalletProvider>
+      <COLayoutInner>{children}</COLayoutInner>
+    </SolanaWalletProvider>
+  );
+}
+
+function COLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { connected, publicKey, disconnect } = useWallet();
@@ -147,6 +162,6 @@ export default function COLayout({ children }: { children: React.ReactNode }) {
 function SidebarLink({ href, active, icon, label }: { href: string; active: boolean; icon: React.ReactNode; label: string }) {
   const [hov, setHov] = useState(false);
   return (
-    <a href={href} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: active ? 600 : 500, color: active ? T.p600 : T.g700, background: active ? T.p100 : hov ? T.c100 : 'transparent', transition: 'all 150ms' }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>{icon}{label}</a>
+    <Link href={href} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: active ? 600 : 500, color: active ? T.p600 : T.g700, background: active ? T.p100 : hov ? T.c100 : 'transparent', transition: 'all 150ms' }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>{icon}{label}</Link>
   );
 }

@@ -8,6 +8,7 @@ import { WalletConnect } from '@/components/survey/WalletConnect';
 import { SurveyWizard } from '@/components/survey/SurveyWizard';
 import { CheckCircle2, MapPin, Users, Clock, ClipboardList, Wallet, LogOut, Mail } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
+import { PublicWalletProvider } from '@/components/providers/PublicWalletProvider';
 
 interface SurveyPageProps {
   params: { slug: string };
@@ -30,6 +31,14 @@ const S = {
 };
 
 export default function SurveyPage({ params, searchParams }: SurveyPageProps) {
+  return (
+    <PublicWalletProvider>
+      <SurveyPageInner params={params} searchParams={searchParams} />
+    </PublicWalletProvider>
+  );
+}
+
+function SurveyPageInner({ params, searchParams }: SurveyPageProps) {
   const { slug } = params;
   const { token } = searchParams;
   const router = useRouter();

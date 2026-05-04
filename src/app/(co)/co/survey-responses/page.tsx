@@ -167,8 +167,31 @@ export default function COSurveyResponsesPage() {
 
   if (error || !cluster) {
     return (
-      <div style={{ flex: 1, padding: '48px 32px', textAlign: 'center' }}>
-        <p style={{ fontSize: 14, color: T.danger }}>{error || 'Cluster tidak ditemukan'}</p>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 32px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 420 }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <MapPin size={32} color={T.p600} />
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: T.g900, marginBottom: 8 }}>
+            Belum Punya Cluster
+          </div>
+          <div style={{ fontSize: 13, color: T.g500, lineHeight: 1.6, marginBottom: 24 }}>
+            Kamu perlu memiliki cluster terlebih dahulu untuk mengelola respon survei.
+            Ajukan proposal cluster dan tunggu persetujuan admin.
+          </div>
+          <button
+            onClick={() => router.push('/co/dashboard/clusters')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '11px 24px', borderRadius: 9999, border: 'none',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+              color: T.c50, background: T.p600, cursor: 'pointer',
+              transition: 'all 150ms', boxShadow: '0 2px 8px rgba(27,122,101,0.25)',
+            }}
+          >
+            <MapPin size={16} /> Ajukan Cluster Sekarang
+          </button>
+        </div>
       </div>
     );
   }

@@ -73,3 +73,26 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
   return NextResponse.json({ ok: true, proposal: updated }, { status: 200 });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser || dbUser.role !== "CLUSTER_OWNER") return NextResponse.json({ error: "CLUSTER_OWNER_REQUIRED" }, { status: 403 });
+
+  const co = await prisma.clusterOwner.findUnique({ where: { userId: user.id } });
+  if (!co) return NextResponse.json({ error: "NO_PROFILE" }, { status: 404 });
+
+  const proposal = await prisma.clusterProposal.findFirst({
+    where: { id: params.id, coId: co.id },
+  });
+
+  if (!proposal) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  if (proposal.status !== "PENDING") return NextResponse.json({ error: "NOT_DELETABLE", message: "Only pending proposals can be deleted." }, { status: 400 });
+
+  await prisma.clusterProposal.delete({ where: { id: params.id } });
+
+  return NextResponse.json({ ok: true, message: "Proposal deleted" }, { status: 200 });
+}

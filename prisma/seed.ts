@@ -71,6 +71,26 @@ async function main() {
   });
   console.log(`✓  Cluster: ${cluster.slug} (${cluster.id}, ownerId: ${cluster.ownerId})`);
 
+  // ── 4b. BSD City / Gading Serpong cluster shell ───────────────────────────
+  const bsdCluster = await prisma.cluster.upsert({
+    where: { slug: 'tangerang-bsd-serpong-001' },
+    update: { ownerId: co.id },
+    create: {
+      slug: 'tangerang-bsd-serpong-001',
+      name: 'The Breeze BSD Corridor',
+      ownerId: co.id,
+      anchorLat: -6.3020,
+      anchorLng: 106.6520,
+      anchorLabel: 'The Breeze BSD City',
+      radiusKm: 1.5,
+      status: 'SEEDING',
+      confidenceScore: 0,
+      dataCompleteness: 0,
+      totalValidatedFields: 0,
+    },
+  });
+  console.log(`✓  Cluster: ${bsdCluster.slug} (${bsdCluster.id}, ownerId: ${bsdCluster.ownerId})`);
+
   // ── 5. Clean up orphaned ClusterOwner (from old seed — admin as CO) ───────
   const orphanedCo = await prisma.clusterOwner.findFirst({
     where: { userId: admin.id },
@@ -92,10 +112,12 @@ async function main() {
     }
   }
 
-  console.log('\n🌱  Seed complete — Margonda shell is ready.');
+  console.log('\n🌱  Seed complete — Both cluster shells are ready.');
   console.log('    Admin: admin@lokal.id / adminlokal123');
   console.log('    CO:    dylansius.putra@gmail.com');
-  console.log('    Next:  run scripts/seed-margonda.ts (T-15) to fill the 20 Tier 1 fields.');
+  console.log('    Next:  run seed scripts to fill the 20 Tier 1 fields:');
+  console.log('           npx ts-node scripts/seed-margonda.ts');
+  console.log('           npx ts-node scripts/seed-bsd-serpong.ts');
 }
 
 main()

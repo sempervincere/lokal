@@ -49,7 +49,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 520, classNam
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: '16px 20px',
       }}
       // Backdrop click closes modal
       onClick={(e) => {
@@ -65,6 +65,9 @@ export function Modal({ open, onClose, title, children, maxWidth = 520, classNam
           borderRadius: 16,
           width: '100%',
           maxWidth,
+          maxHeight: 'calc(100vh - 40px)',
+          display: 'flex',
+          flexDirection: 'column',
           border: `1px solid ${T.c200}`,
           boxShadow: '0 24px 64px rgba(0,0,0,0.14)',
           outline: 'none',
@@ -79,6 +82,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 520, classNam
             justifyContent: 'space-between',
             padding: '18px 20px 16px',
             borderBottom: `1px solid ${T.c200}`,
+            flexShrink: 0,
           }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>
               {title}
@@ -106,8 +110,8 @@ export function Modal({ open, onClose, title, children, maxWidth = 520, classNam
           </div>
         )}
 
-        {/* Body */}
-        <div style={{ padding: 20 }}>
+        {/* Body — scrollable */}
+        <div style={{ padding: 20, overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {children}
         </div>
       </div>

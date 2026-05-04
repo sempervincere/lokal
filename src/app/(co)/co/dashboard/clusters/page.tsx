@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   MapPin, Plus, ShieldCheck, Clock, X, Edit3, AlertCircle,
-  CheckCircle2, XCircle, Building2, Users, ChevronRight,
+  CheckCircle2, XCircle, Building2, Users, ChevronRight, Trash2,
 } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Badge } from '@/components/ui/Badge';
@@ -105,14 +105,37 @@ export default function COClusterListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<ProposalSummary | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  const refreshData = useCallback(() => {
+    setLoading(true);
     fetch('/api/co/clusters/list')
       .then(r => r.json())
       .then(data => { setClusters(data.clusters || []); setProposals(data.proposals || []); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  async function handleDeleteProposal() {
+    if (!selectedProposal) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/co/clusters/proposal/${selectedProposal.id}`, { method: 'DELETE' });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message || 'Gagal menghapus proposal'); }
+      setDeleteModalOpen(false);
+      setSelectedProposal(null);
+      refreshData();
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus proposal');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -316,9 +339,35 @@ export default function COClusterListPage() {
 
               {/* Actions */}
               {selectedProposal.status === 'PENDING' && (
-                <Button full icon={<Edit3 size={16} color={T.c50} />} onClick={() => router.push(`/co/dashboard/clusters/proposal/${selectedProposal.id}`)}>
-                  Edit Proposal
-                </Button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Button full icon={<Edit3 size={16} color={T.c50} />} onClick={() => router.push(`/co/dashboard/clusters/proposal/${selectedProposal.id}`)}>
+                    Edit Proposal
+                  </Button>
+                  <button
+                    onClick={() => setDeleteModalOpen(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 7,
+                      padding: '11px 22px',
+                      borderRadius: 9999,
+                      border: `1.5px solid ${T.danger}`,
+                      fontFamily: 'inherit',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: T.danger,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      width: '100%',
+                      transition: 'all 150ms',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#FEE2E2'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Trash2 size={16} color={T.danger} /> Hapus Proposal
+                  </button>
+                </div>
               )}
               {selectedProposal.status === 'REJECTED' && (
                 <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: 12, textAlign: 'center' }}>
@@ -330,6 +379,51 @@ export default function COClusterListPage() {
                   <div style={{ fontSize: 13, color: T.g700 }}>Proposal disetujui! Cluster kamu sedang dalam tahap persiapan data.</div>
                 </div>
               )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && selectedProposal && (
+        <>
+          <div onClick={() => { if (!deleting) setDeleteModalOpen(false); }} style={{
+            position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.35)', backdropFilter: 'blur(4px)', zIndex: 60,
+          }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            background: T.c50, borderRadius: 16, padding: '28px', zIndex: 70,
+            width: '90%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.14)', border: `1px solid ${T.c200}`,
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 8 }}>Hapus Proposal?</div>
+            <div style={{ fontSize: 13, color: T.g500, marginBottom: 20, lineHeight: 1.5 }}>
+              Proposal <strong>{selectedProposal.clusterName}</strong> akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => { if (!deleting) setDeleteModalOpen(false); }}
+                disabled={deleting}
+                style={{
+                  padding: '9px 18px', borderRadius: 9999, border: `1.5px solid ${T.c200}`,
+                  background: 'transparent', color: T.g700, fontSize: 13, fontWeight: 600,
+                  fontFamily: 'inherit', cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteProposal}
+                disabled={deleting}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '9px 22px', borderRadius: 9999, border: 'none',
+                  background: T.danger, color: T.c50, fontSize: 13, fontWeight: 600,
+                  fontFamily: 'inherit', cursor: deleting ? 'not-allowed' : 'pointer',
+                  opacity: deleting ? 0.7 : 1, transition: 'all 150ms',
+                }}
+              >
+                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+              </button>
             </div>
           </div>
         </>

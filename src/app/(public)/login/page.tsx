@@ -50,7 +50,7 @@ function AuthPageInner() {
         // Sync to our Prisma users table — fire-and-await, non-blocking on failure
         await fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
 
-        const dest = role === 'co' ? '/co/dashboard' : '/dashboard';
+        const dest = role === 'co' ? '/co/kyc' : '/dashboard';
         window.location.href = dest;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -59,11 +59,14 @@ function AuthPageInner() {
         // Sync on every login in case the record was missing
         await fetch('/api/auth/sync', { method: 'POST' }).catch(() => {});
 
-        // Route based on role — ADMIN goes to /admin, CO goes to /co/dashboard, BO goes to /dashboard
-        const { data: { user: signedInUser } } = await supabase.auth.getUser();
-        const userRole = signedInUser?.user_metadata?.role;
-        if (userRole === 'ADMIN') window.location.href = '/admin';
-        else if (userRole === 'CLUSTER_OWNER') window.location.href = '/co/dashboard';
+        // Route based on ACTUAL DB role — never trust client metadata
+        const meRes = await fetch('/api/me');
+        if (!meRes.ok) throw new Error('Gagal memuat profil pengguna');
+        const meData = await meRes.json();
+        const dbRole = meData.user?.role;
+
+        if (dbRole === 'ADMIN') window.location.href = '/admin';
+        else if (dbRole === 'CLUSTER_OWNER') window.location.href = '/co/kyc';
         else window.location.href = '/dashboard';
       }
     } catch (err: any) {
