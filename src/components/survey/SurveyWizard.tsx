@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Send, Loader2, User, ShoppingBag, Store, BarChart3, Target } from 'lucide-react';
-import { SURVEY_CATEGORIES } from '@/lib/constants/survey-fields';
+import { ChevronLeft, ChevronRight, Send, Loader2, User, ShoppingBag, Store, BarChart3, Target, AlertCircle } from 'lucide-react';
+import { SURVEY_CATEGORIES, SURVEY_FIELDS, getSurveyFieldsByCategory } from '@/lib/constants/survey-fields';
 import { DemographicStep } from './steps/DemographicStep';
 import { BehaviouralStep } from './steps/BehaviouralStep';
 import { MarketStep } from './steps/MarketStep';
@@ -72,16 +72,56 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
   }, [errors]);
 
   const validateCurrentStep = useCallback((): boolean => {
-    // Validation is handled inside each step component
-    return true;
-  }, []);
+    const stepFields = getSurveyFieldsByCategory(currentStepConfig.id);
+    const newErrors: Record<string, string> = {};
+
+    for (const field of stepFields) {
+      if (!field.required) continue;
+      const value = values[field.code];
+
+      if (field.type === 'category_prices') {
+        // Must have at least one category with a price
+        if (!value || typeof value !== 'object' || Object.keys(value).length === 0) {
+          newErrors[field.code] = 'Isi minimal satu kategori';
+        } else {
+          const hasAtLeastOne = Object.values(value).some(v => v !== undefined && v !== null && v !== '' && Number(v) > 0);
+          if (!hasAtLeastOne) newErrors[field.code] = 'Isi minimal satu kategori';
+        }
+      } else if (field.type === 'multi_select') {
+        if (!Array.isArray(value) || value.length === 0) {
+          newErrors[field.code] = 'Pilih minimal satu opsi';
+        }
+      } else if (field.type === 'text_list') {
+        if (!Array.isArray(value) || value.length === 0) {
+          newErrors[field.code] = 'Tambahkan minimal satu item';
+        }
+      } else if (field.type === 'scale') {
+        if (value === undefined || value === null) {
+          newErrors[field.code] = 'Pilih nilai';
+        }
+      } else if (field.type === 'text') {
+        if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+          newErrors[field.code] = 'Wajib diisi';
+        }
+      } else if (field.type === 'select') {
+        if (!value || value === '') {
+          newErrors[field.code] = 'Pilih salah satu';
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [currentStepConfig.id, values]);
 
   const handleNext = useCallback(() => {
+    if (!validateCurrentStep()) return;
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(prev => prev + 1);
+      setErrors({});
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [currentStep]);
+  }, [currentStep, validateCurrentStep]);
 
   const handlePrev = useCallback(() => {
     if (currentStep > 0) {
@@ -91,6 +131,7 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
   }, [currentStep]);
 
   const handleSubmit = useCallback(async () => {
+    if (!validateCurrentStep()) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -106,7 +147,7 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
     } finally {
       setSubmitting(false);
     }
-  }, [wallet, email, clusterSlug, values, onComplete]);
+  }, [wallet, email, clusterSlug, values, onComplete, validateCurrentStep]);
 
   const isLastStep = currentStep === STEPS.length - 1;
   const progress = ((currentStep + 1) / STEPS.length) * 100;
@@ -237,6 +278,16 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
           </button>
         )}
       </div>
+
+      {/* Validation errors summary */}
+      {Object.keys(errors).length > 0 && (
+        <div style={{ marginTop: 16, padding: '12px 16px', background: `${T.warning}10`, border: `1px solid ${T.warning}30`, borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertCircle size={16} color={T.warning} />
+          <span style={{ fontSize: 13, color: T.g700 }}>
+            Mohon isi {Object.keys(errors).length} pertanyaan yang belum dijawab
+          </span>
+        </div>
+      )}
 
       {/* Error message */}
       {submitError && (

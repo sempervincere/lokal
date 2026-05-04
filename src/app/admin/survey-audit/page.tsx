@@ -366,17 +366,37 @@ export default function AdminSurveyAuditPage() {
             <LoadingSpinner size="lg" />
           </div>
         ) : error ? (
-          <div style={{ padding: '32px', textAlign: 'center', color: T.danger, fontSize: 14 }}>
-            <AlertTriangle size={24} style={{ margin: '0 auto 12px' }} />
-            {error}
+          <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <AlertTriangle size={28} color={T.danger} />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Gagal Memuat Data</div>
+            <div style={{ fontSize: 13, color: T.g500, marginBottom: 20, lineHeight: 1.5 }}>
+              {error === 'Gagal memuat data' 
+                ? 'Terjadi kesalahan saat mengambil data survey. Coba refresh halaman atau periksa koneksi internet.' 
+                : error}
+            </div>
+            <button
+              onClick={() => fetchData(pagination.page)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '9px 18px', borderRadius: 9999, border: 'none',
+                fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: T.c50, background: T.p600,
+                cursor: 'pointer', transition: 'all 150ms',
+              }}
+            >
+              <Loader2 size={14} /> Coba Lagi
+            </button>
           </div>
         ) : filteredResponses.length === 0 ? (
           <div style={{ padding: '48px 32px', textAlign: 'center' }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: T.c100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <FileText size={24} color={T.g500} />
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <FileText size={28} color={T.p600} />
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Tidak ada respon</div>
-            <div style={{ fontSize: 13, color: T.g500 }}>Tidak ada survey response yang cocok dengan filter saat ini.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900, marginBottom: 6 }}>Belum Ada Respon Survey</div>
+            <div style={{ fontSize: 13, color: T.g500, maxWidth: 360, margin: '0 auto', lineHeight: 1.5 }}>
+              Responden belum mengisi survey untuk cluster ini. Data akan muncul otomatis setelah responden submit.
+            </div>
           </div>
         ) : (
           <>

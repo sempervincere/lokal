@@ -51,6 +51,7 @@ function SurveyPageInner({ params, searchParams }: SurveyPageProps) {
   const [email, setEmail] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [existingSubmission, setExistingSubmission] = useState<any>(null);
+  const [justDisconnected, setJustDisconnected] = useState(false);
 
   useEffect(() => {
     if (!token) { setError('Token survey tidak valid'); setLoading(false); return; }
@@ -62,11 +63,17 @@ function SurveyPageInner({ params, searchParams }: SurveyPageProps) {
   }, [slug, token]);
 
   const handleWalletConnect = useCallback((walletAddress: string, emailAddress?: string) => {
+    // Ignore auto-reconnect right after user explicitly disconnected
+    if (justDisconnected) {
+      setJustDisconnected(false);
+      return;
+    }
     setWallet(walletAddress);
     if (emailAddress) setEmail(emailAddress);
-  }, []);
+  }, [justDisconnected]);
 
   const handleDisconnect = useCallback(() => {
+    setJustDisconnected(true);
     disconnect();
     setWallet(null);
     setEmail(null);
