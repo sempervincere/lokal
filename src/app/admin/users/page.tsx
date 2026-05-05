@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Users, Search, ShieldCheck, MapPin, BarChart2, X,
   Mail, Wallet, Phone, Building2, Briefcase, Calendar,
@@ -82,6 +82,21 @@ export default function AdminUsersPage() {
   const [detailUser, setDetailUser] = useState<UserItem | null>(null);
   const [copiedWallet, setCopiedWallet] = useState<string | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Lock container scroll + auto-scroll to top when detail modal opens
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (detailUser) {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+      el.style.overflow = 'hidden';
+    } else {
+      el.style.overflow = 'auto';
+    }
+    return () => { el.style.overflow = 'auto'; };
+  }, [detailUser]);
+
   const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
@@ -125,7 +140,7 @@ export default function AdminUsersPage() {
   }, [stats]);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+    <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>
@@ -411,7 +426,7 @@ function UserDetailModal({ user, onClose, onCopy, copiedWallet }: { user: UserIt
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(26,26,26,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={onClose}
     >
       <div
@@ -506,7 +521,7 @@ function UserDetailModal({ user, onClose, onCopy, copiedWallet }: { user: UserIt
                 <div><span style={{ fontSize: 10, color: T.g500 }}>CO Score</span><div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{user.clusterOwner.coScore}</div></div>
                 <div><span style={{ fontSize: 10, color: T.g500 }}>Trust Score</span><div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{user.clusterOwner.trustScore}</div></div>
                 <div><span style={{ fontSize: 10, color: T.g500 }}>Cluster</span><div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{user.clusterOwner.clusters}</div></div>
-                <div><span style={{ fontSize: 10, color: T.g500 }}>Earnings</span><div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>{user.clusterOwner.earnings}</div></div>
+                <div><span style={{ fontSize: 10, color: T.g500 }}>Earnings</span><div style={{ fontSize: 14, fontWeight: 700, color: T.g900 }}>Rp {user.clusterOwner.earnings.toLocaleString('id')}</div></div>
               </div>
               {user.clusterOwner.nftMintAddress && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #BAE6FD' }}>

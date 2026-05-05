@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Fetch users with counts
+    // Fetch users
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
           updatedAt: true,
           _count: {
             select: {
-              sessions: true,
               messages: true,
             },
           },
@@ -84,7 +83,6 @@ export async function GET(request: NextRequest) {
               _count: {
                 select: {
                   clusters: true,
-                  coEarnings: true,
                 },
               },
             },
@@ -103,36 +101,118 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    return NextResponse.json({
-      users: users.map(u => ({
-        id: u.id,
-        email: u.email,
-        fullName: u.fullName,
-        role: u.role,
-        walletAddress: u.walletAddress,
-        phoneNumber: u.phoneNumber,
-        companyName: u.companyName,
-        jobTitle: u.jobTitle,
-        kycCompleted: u.kycCompleted,
-        credits: u.credits,
-        isSubs: u.isSubs,
-        subsType: u.subsType,
-        createdAt: u.createdAt,
-        updatedAt: u.updatedAt,
-        stats: {
-          sessions: u._count.sessions,
-          messages: u._count.messages,
+    // Enrich CO data: paid sessions in their clusters + total earnings (IDRX)
+    const coUserIds = users.filter(u => u.clusterOwner).map(u => u.id);
+    const coIds = users.filter(u => u.clusterOwner).map(u => u.clusterOwner!.id);
+
+    let coSessionCounts: Record<string, number> = {};
+    let coEarningsSums: Record<string, number> = {};
+    let userSessionCounts: Record<string, number> = {};
+
+    if (coIds.length > 0) {
+      // Get clusters owned by these COs
+      const clusters = await prisma.cluster.findMany({
+        where: { ownerId: { in: coIds } },
+        select: { id: true, ownerId: true },
+      });
+
+      const clusterIds = clusters.map(c => c.id);
+      const clusterToCoId = Object.fromEntries(clusters.map(c => [c.id, c.ownerId]));
+
+      // Count paid sessions per cluster (not PENDING_PAYMENT)
+      if (clusterIds.length > 0) {
+        const sessionCounts = await prisma.session.groupBy({
+          by: ["clusterId"],
+          where: {
+            clusterId: { in: clusterIds },
+            status: { not: "PENDING_PAYMENT" },
+          },
+          _count: true,
+        });
+
+        for (const sc of sessionCounts) {
+          const coId = clusterToCoId[sc.clusterId];
+          if (coId) {
+            coSessionCounts[coId] = (coSessionCounts[coId] || 0) + sc._count;
+          }
+        }
+      }
+
+      // Sum earnings per CO
+      const earningsAgg = await prisma.coEarning.groupBy({
+        by: ["coId"],
+        where: { coId: { in: coIds } },
+        _sum: { amountIdrx: true },
+      });
+
+      for (const e of earningsAgg) {
+        coEarningsSums[e.coId] = Number(e._sum.amountIdrx) || 0;
+      }
+    }
+
+    // Count sessions for BUSINESS_OWNER users (their own sessions)
+    const boUserIds = users.filter(u => u.role === "BUSINESS_OWNER").map(u => u.id);
+    if (boUserIds.length > 0) {
+      const boSessions = await prisma.session.groupBy({
+        by: ["userId"],
+        where: {
+          userId: { in: boUserIds },
+          status: { not: "PENDING_PAYMENT" },
         },
-        clusterOwner: u.clusterOwner ? {
-          id: u.clusterOwner.id,
-          coScore: u.clusterOwner.coScore,
-          trustScore: u.clusterOwner.trustScore,
-          isActive: u.clusterOwner.isActive,
-          nftMintAddress: u.clusterOwner.nftMintAddress,
-          clusters: u.clusterOwner._count.clusters,
-          earnings: u.clusterOwner._count.coEarnings,
-        } : null,
-      })),
+        _count: true,
+      });
+
+      for (const s of boSessions) {
+        userSessionCounts[s.userId] = s._count;
+      }
+    }
+
+    // Map coId -> userId for easy lookup
+    const coIdToUserId = Object.fromEntries(
+      users.filter(u => u.clusterOwner).map(u => [u.clusterOwner!.id, u.id])
+    );
+
+    return NextResponse.json({
+      users: users.map(u => {
+        const isCO = u.role === "CLUSTER_OWNER";
+        const coId = u.clusterOwner?.id;
+
+        // For COs: count paid sessions in their clusters
+        // For BOs: count their own paid sessions
+        const sessionCount = isCO && coId
+          ? (coSessionCounts[coId] || 0)
+          : (userSessionCounts[u.id] || 0);
+
+        return {
+          id: u.id,
+          email: u.email,
+          fullName: u.fullName,
+          role: u.role,
+          walletAddress: u.walletAddress,
+          phoneNumber: u.phoneNumber,
+          companyName: u.companyName,
+          jobTitle: u.jobTitle,
+          kycCompleted: u.kycCompleted,
+          credits: u.credits,
+          isSubs: u.isSubs,
+          subsType: u.subsType,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+          stats: {
+            sessions: sessionCount,
+            messages: u._count.messages,
+          },
+          clusterOwner: u.clusterOwner ? {
+            id: u.clusterOwner.id,
+            coScore: u.clusterOwner.coScore,
+            trustScore: u.clusterOwner.trustScore,
+            isActive: u.clusterOwner.isActive,
+            nftMintAddress: u.clusterOwner.nftMintAddress,
+            clusters: u.clusterOwner._count.clusters,
+            earnings: coId ? (coEarningsSums[coId] || 0) : 0,
+          } : null,
+        };
+      }),
       stats: {
         total,
         roleDistribution: roleDistribution.map(r => ({ role: r.role, count: r._count })),

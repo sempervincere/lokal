@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
-import { Wallet, TrendingUp, Clock, CheckCircle2, Loader2, Download, ArrowRight, AlertTriangle, Inbox, FileText, ShieldCheck, Coins, LogOut } from 'lucide-react';
+import { Wallet, TrendingUp, Clock, CheckCircle2, Loader2, Download, ArrowRight, AlertTriangle, Inbox, FileText, ShieldCheck, Coins, LogOut, Mail, X, ChevronRight } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
+import { PublicKey } from '@solana/web3.js';
 import { PublicWalletProvider } from '@/components/providers/PublicWalletProvider';
 
 interface VaultClaim {
@@ -68,6 +69,18 @@ function VaultPageInner() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawSuccess, setWithdrawSuccess] = useState<string | null>(null);
 
+  // Email lookup state
+  const [emailInput, setEmailInput] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailMode, setEmailMode] = useState<{ wallet: string; email: string } | null>(null);
+
+  // Email-user withdraw modal state
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawWalletInput, setWithdrawWalletInput] = useState('');
+  const [withdrawWalletError, setWithdrawWalletError] = useState<string | null>(null);
+  const [withdrawWalletLoading, setWithdrawWalletLoading] = useState(false);
+
   useEffect(() => {
     if (!connected || !publicKey) { setSummary(null); setClusters([]); return; }
     setLoading(true); setError(null);
@@ -79,6 +92,11 @@ function VaultPageInner() {
   }, [connected, publicKey]);
 
   const handleWithdraw = useCallback(async () => {
+    if (emailMode) {
+      // Email users must enter a wallet address first
+      setWithdrawModalOpen(true);
+      return;
+    }
     if (!publicKey) return;
     setWithdrawing(true); setError(null);
     try {
@@ -91,10 +109,86 @@ function VaultPageInner() {
       setSummary(refreshData.summary); setClusters(refreshData.clusters || []);
     } catch (err) { setError(err instanceof Error ? err.message : 'Terjadi kesalahan'); }
     finally { setWithdrawing(false); }
-  }, [publicKey]);
+  }, [publicKey, emailMode]);
+
+  const handleEmailLookup = useCallback(async () => {
+    if (!emailInput.includes('@')) return;
+    setEmailLoading(true); setError(null);
+    try {
+      // Resolve email → wallet via TipLink API
+      const tipRes = await fetch('/api/auth/tiplink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput }),
+      });
+      if (!tipRes.ok) throw new Error('Gagal menemukan dompet untuk email ini');
+      const tipData = await tipRes.json();
+      const wallet = tipData.walletAddress;
+
+      // Fetch vault data for this wallet
+      const vaultRes = await fetch(`/api/vault?wallet=${wallet}`);
+      if (!vaultRes.ok) throw new Error('Gagal memuat data vault');
+      const vaultData = await vaultRes.json();
+
+      setEmailMode({ wallet, email: emailInput });
+      setSummary(vaultData.summary);
+      setClusters(vaultData.clusters || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+    } finally {
+      setEmailLoading(false);
+    }
+  }, [emailInput]);
+
+  const handleEmailWithdraw = useCallback(async () => {
+    if (!withdrawWalletInput.trim()) {
+      setWithdrawWalletError('Alamat dompet wajib diisi');
+      return;
+    }
+    // Validate Solana address
+    try {
+      new PublicKey(withdrawWalletInput.trim());
+    } catch {
+      setWithdrawWalletError('Alamat dompet Solana tidak valid');
+      return;
+    }
+    if (!emailMode) return;
+
+    setWithdrawWalletLoading(true); setWithdrawWalletError(null); setError(null);
+    try {
+      const res = await fetch('/api/vault/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: emailMode.wallet, targetWallet: withdrawWalletInput.trim() }),
+      });
+      if (!res.ok) { const data = await res.json(); throw new Error(data.message || 'Gagal melakukan withdraw'); }
+      const data = await res.json();
+      setWithdrawSuccess(`Berhasil! ${data.withdrawal.amount} IDRX telah dikirim ke dompet ${withdrawWalletInput.slice(0, 5)}...${withdrawWalletInput.slice(-4)}.`);
+      setWithdrawModalOpen(false);
+      setWithdrawWalletInput('');
+      // Refresh
+      const refreshRes = await fetch(`/api/vault?wallet=${emailMode.wallet}`);
+      const refreshData = await refreshRes.json();
+      setSummary(refreshData.summary); setClusters(refreshData.clusters || []);
+    } catch (err) {
+      setWithdrawWalletError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+    } finally {
+      setWithdrawWalletLoading(false);
+    }
+  }, [withdrawWalletInput, emailMode]);
+
+  const resetEmailMode = useCallback(() => {
+    setEmailMode(null);
+    setSummary(null);
+    setClusters([]);
+    setEmailInput('');
+    setShowEmailForm(false);
+    setWithdrawSuccess(null);
+    setError(null);
+  }, []);
 
   /* ─── Not Connected State ─── */
-  if (!connected) {
+  if (!connected && !emailMode) {
     return (
       <div style={S.page}>
         <div style={S.container}>
@@ -112,6 +206,63 @@ function VaultPageInner() {
               <div style={{ width: '100%', maxWidth: 320 }}>
                 <WalletMultiButton />
               </div>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 320 }}>
+                <div style={{ flex: 1, height: 1, background: T.c200 }} />
+                <span style={{ fontSize: 11, color: T.g500, fontWeight: 500 }}>atau</span>
+                <div style={{ flex: 1, height: 1, background: T.c200 }} />
+              </div>
+
+              {/* Email lookup */}
+              {!showEmailForm ? (
+                <button
+                  onClick={() => setShowEmailForm(true)}
+                  style={{ ...S.btnSecondary, width: '100%', maxWidth: 320 }}
+                >
+                  <Mail size={18} />
+                  Lanjut dengan Email
+                </button>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 320 }}>
+                  <div style={{ position: 'relative' }}>
+                    <Mail size={16} color={T.g500} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="email@example.com"
+                      style={{
+                        width: '100%', padding: '12px 16px 12px 40px', borderRadius: 12, border: `1.5px solid ${T.c200}`,
+                        fontFamily: 'inherit', fontSize: 14, color: T.g900, background: '#fff', outline: 'none',
+                      }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleEmailLookup()}
+                    />
+                  </div>
+                  <button
+                    onClick={handleEmailLookup}
+                    disabled={emailLoading || !emailInput.includes('@')}
+                    style={{
+                      ...S.btnPrimary,
+                      opacity: (emailLoading || !emailInput.includes('@')) ? 0.5 : 1,
+                      cursor: (emailLoading || !emailInput.includes('@')) ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {emailLoading ? (
+                      <><Loader2 size={16} style={{ animation: 'lokal-spin 800ms linear infinite' }} />Memproses...</>
+                    ) : (
+                      <>Cek Vault<ChevronRight size={16} /></>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setShowEmailForm(false); setEmailInput(''); }}
+                    style={{ fontSize: 12, color: T.g500, background: 'none', border: 'none', cursor: 'pointer', padding: 4, fontFamily: 'inherit' }}
+                  >
+                    Kembali
+                  </button>
+                </div>
+              )}
+
               <button onClick={() => router.push('/clusters')} style={S.btnSecondary}>
                 Lihat Cluster
                 <ArrowRight size={16} />
@@ -156,7 +307,7 @@ function VaultPageInner() {
   }
 
   /* ─── Error State ─── */
-  if (error) {
+  if (error && !summary) {
     return (
       <div style={S.page}>
         <div style={{ ...S.container, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -166,26 +317,49 @@ function VaultPageInner() {
             </div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: T.g900, marginBottom: 8 }}>Gagal Memuat Data</h2>
             <p style={{ fontSize: 13, color: T.g500, marginBottom: 24, lineHeight: 1.5 }}>{error}</p>
-            <button onClick={() => window.location.reload()} style={S.btnPrimary}>Coba Lagi</button>
+            {emailMode ? (
+              <button onClick={resetEmailMode} style={S.btnPrimary}>Kembali</button>
+            ) : (
+              <button onClick={() => window.location.reload()} style={S.btnPrimary}>Coba Lagi</button>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
+  const walletDisplay = connected && publicKey
+    ? publicKey.toString()
+    : emailMode?.wallet || '';
+
   return (
     <div style={S.page}>
       <div style={S.container}>
-        {/* Header with disconnect */}
+        {/* Header with wallet badge + disconnect */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em', marginBottom: 4 }}>Vault LOKAL</h1>
             <p style={{ fontSize: 14, color: T.g500 }}>Lihat dan kelola reward dari kontribusi survey kamu</p>
           </div>
-          <button onClick={() => disconnect()} style={S.btnGhost}>
-            <LogOut size={14} />
-            Putuskan Wallet
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Wallet status badge */}
+            {walletDisplay && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: T.c100, borderRadius: 9999 }}>
+                {emailMode ? (
+                  <Mail size={14} color={T.p600} />
+                ) : (
+                  <Wallet size={14} color={T.p600} />
+                )}
+                <span style={{ fontSize: 12, fontWeight: 600, color: T.g700, fontFamily: 'var(--font-mono), monospace' }}>
+                  {walletDisplay.slice(0, 5)}...{walletDisplay.slice(-4)}
+                </span>
+              </div>
+            )}
+            <button onClick={() => { if (emailMode) resetEmailMode(); else disconnect(); }} style={S.btnGhost}>
+              <LogOut size={14} />
+              {emailMode ? 'Ganti Akun' : 'Putuskan Wallet'}
+            </button>
+          </div>
         </div>
 
         {/* Summary cards */}
@@ -224,6 +398,16 @@ function VaultPageInner() {
           </div>
         )}
 
+        {/* Email mode note */}
+        {emailMode && (
+          <div style={{ background: '#E0F2FE', border: '1.5px solid #BAE6FD', borderRadius: 12, padding: '14px 16px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Mail size={16} color="#0EA5E9" />
+            <span style={{ fontSize: 13, color: '#0EA5E9', fontWeight: 600 }}>
+              Mode Email: {emailMode.email} — Untuk withdraw, kamu perlu memasukkan alamat dompet Phantom.
+            </span>
+          </div>
+        )}
+
         {/* Clusters list */}
         <div>
           <h2 style={S.sectionTitle}>Kontribusi per Cluster</h2>
@@ -245,6 +429,73 @@ function VaultPageInner() {
           )}
         </div>
       </div>
+
+      {/* Email-user withdraw modal */}
+      {withdrawModalOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setWithdrawModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: T.c50, borderRadius: 20, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.2)', border: `1px solid ${T.c200}`, overflow: 'hidden' }}
+          >
+            <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${T.c200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: T.g900 }}>Withdraw ke Dompet</div>
+                <div style={{ fontSize: 12, color: T.g500, marginTop: 2 }}>Masukkan alamat dompet Phantom untuk menerima IDRX</div>
+              </div>
+              <button onClick={() => setWithdrawModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.g500, padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 6 }}>
+                  Alamat Dompet Solana <span style={{ color: T.danger }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={withdrawWalletInput}
+                  onChange={(e) => { setWithdrawWalletInput(e.target.value); setWithdrawWalletError(null); }}
+                  placeholder="Contoh: 3psJ1RBf4Ci96xQdqyuC5HgqKntwyzr1jxuHaFyEVfJt"
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${withdrawWalletError ? T.danger : T.c200}`,
+                    fontFamily: 'var(--font-mono), monospace', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+                  }}
+                />
+                {withdrawWalletError && (
+                  <div style={{ fontSize: 11, color: T.danger, marginTop: 6, fontWeight: 600 }}>{withdrawWalletError}</div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={handleEmailWithdraw}
+                  disabled={withdrawWalletLoading}
+                  style={{
+                    flex: 1, padding: '10px 18px', borderRadius: 9999, border: 'none',
+                    fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: T.p600,
+                    cursor: withdrawWalletLoading ? 'not-allowed' : 'pointer',
+                    opacity: withdrawWalletLoading ? 0.6 : 1,
+                  }}
+                >
+                  {withdrawWalletLoading ? (
+                    <><Loader2 size={14} style={{ animation: 'lokal-spin 800ms linear infinite' }} />Memproses...</>
+                  ) : (
+                    <>Konfirmasi Withdraw</>
+                  )}
+                </button>
+                <button
+                  onClick={() => setWithdrawModalOpen(false)}
+                  style={{ padding: '10px 18px', borderRadius: 9999, border: `1.5px solid ${T.c200}`, background: 'transparent', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: T.g700, cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

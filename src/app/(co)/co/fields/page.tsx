@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Link2, Copy, Check, Users, ExternalLink, ClipboardList, Eye, Search, BarChart3, MapPin, ShieldCheck } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Link2, Copy, Check, Users, ExternalLink, ClipboardList, Eye, Search, BarChart3, MapPin, ShieldCheck, Plus, X, Loader2, ImageIcon, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -16,7 +16,7 @@ interface SurveyResponses {
 }
 
 interface FieldData {
-  id: string;
+  id: string | null;
   fieldCode: string;
   fieldName: string;
   collectionMethod: string;
@@ -24,6 +24,8 @@ interface FieldData {
   isSurveyField: boolean;
   status: string;
   value: unknown;
+  evidencePhotoUrl: string | null;
+  evidenceNote: string | null;
   surveyResponses: SurveyResponses;
   canBulkAccept: boolean;
 }
@@ -149,7 +151,28 @@ export default function COFieldsPage() {
     approvedCount: 0,
   });
 
+  // Submission modal state
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Lock container scroll + auto-scroll to top when submit modal opens
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (submitModalOpen) {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+      el.style.overflow = 'hidden';
+    } else {
+      el.style.overflow = 'auto';
+    }
+    return () => { el.style.overflow = 'auto'; };
+  }, [submitModalOpen]);
+
+  const fetchData = useCallback(() => {
     setLoading(true);
     const slugParam = urlClusterSlug ? `?clusterSlug=${encodeURIComponent(urlClusterSlug)}` : '';
     fetch(`/api/co/fields${slugParam}`)
@@ -160,7 +183,6 @@ export default function COFieldsPage() {
         setClusterSlug(data.clusterSlug);
         setSurveyLink(data.surveyLink || '');
 
-        // Calculate survey stats
         const totalResponses = data.fields.reduce((sum: number, f: FieldData) =>
           sum + (f.surveyResponses?.total || 0), 0) / 15;
         const pendingCount = data.fields.reduce((sum: number, f: FieldData) =>
@@ -177,6 +199,10 @@ export default function COFieldsPage() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, [urlClusterSlug]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   function copySurveyLink() {
     navigator.clipboard.writeText(surveyLink).then(() => {
@@ -223,7 +249,7 @@ export default function COFieldsPage() {
       : [];
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+    <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', position: 'relative', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       {/* Cluster Switcher Tabs — always visible */}
       {allTabs.length > 0 && (
         <div style={{ marginBottom: 24 }}>
@@ -336,7 +362,7 @@ export default function COFieldsPage() {
         </div>
       )}
 
-      {/* Fields Section */}
+      {/* Fields Section Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: T.g900, marginBottom: 4 }}>Data Fields — Tier 1</div>
@@ -351,6 +377,23 @@ export default function COFieldsPage() {
             }}>{f.label}</button>
           ))}
         </div>
+      </div>
+
+      {/* Submit Data Button */}
+      <div style={{ marginBottom: 20 }}>
+        <button
+          onClick={() => { setSubmitModalOpen(true); setSubmitSuccess(null); setSubmitError(null); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '10px 20px', borderRadius: 10, border: 'none',
+            fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
+            color: T.c50, background: T.p600, cursor: 'pointer',
+            transition: 'all 150ms',
+          }}
+        >
+          <Plus size={16} />
+          Submit Data Field
+        </button>
       </div>
 
       <div style={{ marginBottom: 20 }}>
@@ -420,6 +463,505 @@ export default function COFieldsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Submission Modal */}
+      {submitModalOpen && (
+        <SubmitFieldModal
+          fields={fields}
+          onClose={() => setSubmitModalOpen(false)}
+          onSuccess={(msg) => {
+            setSubmitSuccess(msg);
+            setSubmitModalOpen(false);
+            fetchData();
+          }}
+          onError={(msg) => setSubmitError(msg)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Submit Field Modal
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+interface SubmitFieldModalProps {
+  fields: FieldData[];
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+  onError: (msg: string) => void;
+}
+
+function SubmitFieldModal({ fields, onClose, onSuccess, onError }: SubmitFieldModalProps) {
+  // Only non-survey fields that are PENDING or don't exist yet
+  const submittableFields = fields.filter(f =>
+    !f.isSurveyField && f.status !== 'VALIDATED'
+  );
+
+  const [selectedCode, setSelectedCode] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [evidenceNote, setEvidenceNote] = useState('');
+  const [evidencePhotoUrl, setEvidencePhotoUrl] = useState('');
+
+  // Dynamic value state per field type
+  const [textValue, setTextValue] = useState('');
+  const [numberValue, setNumberValue] = useState('');
+  const [textareaValue, setTextareaValue] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [categoryRows, setCategoryRows] = useState<{ category: string; value: string }[]>([]);
+
+  const selectedField = submittableFields.find(f => f.fieldCode === selectedCode);
+
+  function resetForm() {
+    setTextValue('');
+    setNumberValue('');
+    setTextareaValue('');
+    setTags([]);
+    setTagInput('');
+    setCategoryRows([]);
+    setEvidenceNote('');
+    setEvidencePhotoUrl('');
+  }
+
+  function getPayloadValue(): any {
+    if (!selectedField) return null;
+    const code = selectedField.fieldCode;
+
+    switch (code) {
+      case 'B3':
+        return { peak_hours: textValue, note: evidenceNote };
+      case 'M1':
+        return {
+          by_category: Object.fromEntries(
+            categoryRows.filter(r => r.category.trim()).map(r => [r.category, { count: parseInt(r.value) || 0 }])
+          ),
+          total_outlets: categoryRows.reduce((sum, r) => sum + (parseInt(r.value) || 0), 0),
+        };
+      case 'M2':
+        return {
+          by_category: Object.fromEntries(
+            categoryRows.filter(r => r.category.trim()).map(r => [r.category, { avg: parseInt(r.value) || 0 }])
+          ),
+        };
+      case 'M3':
+        return { competitors: tags.map(name => ({ name })) };
+      case 'M4':
+        return { overall: parseInt(numberValue) || 0 };
+      case 'M5':
+        return { cases: [{ story: textareaValue, date: new Date().toISOString() }] };
+      case 'MS1':
+        return { hourly_peak: parseInt(numberValue) || 0 };
+      case 'MS2':
+        return { primary_gap: textValue };
+      case 'C2':
+        return { lag_weeks: parseInt(numberValue) || 0 };
+      case 'C4':
+        return { score: parseInt(numberValue) || 0 };
+      case 'C5':
+        return { points: tags.map(name => ({ name })) };
+      default:
+        return textValue;
+    }
+  }
+
+  async function handleSubmit() {
+    if (!selectedField) return;
+    const value = getPayloadValue();
+    if (value === null || value === undefined || value === '') {
+      onError('Nilai field wajib diisi');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/co/fields', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fieldCode: selectedField.fieldCode,
+          value,
+          evidenceNote: evidenceNote || undefined,
+          evidencePhotoUrl: evidencePhotoUrl || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal submit');
+      onSuccess(`Field ${selectedField.fieldCode} berhasil disubmit!`);
+    } catch (e: any) {
+      onError(e.message || 'Gagal submit field');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function addTag() {
+    if (!tagInput.trim()) return;
+    if (!tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+    }
+    setTagInput('');
+  }
+
+  function removeTag(tag: string) {
+    setTags(tags.filter(t => t !== tag));
+  }
+
+  function addCategoryRow() {
+    setCategoryRows([...categoryRows, { category: '', value: '' }]);
+  }
+
+  function updateCategoryRow(index: number, field: 'category' | 'value', val: string) {
+    const updated = [...categoryRows];
+    updated[index][field] = val;
+    setCategoryRows(updated);
+  }
+
+  function removeCategoryRow(index: number) {
+    setCategoryRows(categoryRows.filter((_, i) => i !== index));
+  }
+
+  // Determine input type based on field code
+  function renderFieldInput() {
+    if (!selectedField) return null;
+    const code = selectedField.fieldCode;
+
+    // Number fields (1-10 rating)
+    if (code === 'M4' || code === 'C4') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            Rating (1–10) <span style={{ color: T.danger }}>*</span>
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <input
+              type="range"
+              min={1}
+              max={10}
+              value={numberValue || 5}
+              onChange={(e) => setNumberValue(e.target.value)}
+              style={{ flex: 1, accentColor: T.p600 }}
+            />
+            <span style={{ fontSize: 18, fontWeight: 800, color: T.p600, minWidth: 32, textAlign: 'center' }}>
+              {numberValue || 5}
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: T.g500, marginTop: 4 }}>
+            {code === 'M4' ? '1 = sangat tidak padat, 10 = sangat padat' : '1 = sangat buruk, 10 = sangat baik'}
+          </div>
+        </div>
+      );
+    }
+
+    // Number fields (count)
+    if (code === 'MS1') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            Estimasi orang per jam (peak) <span style={{ color: T.danger }}>*</span>
+          </label>
+          <input
+            type="number"
+            value={numberValue}
+            onChange={(e) => setNumberValue(e.target.value)}
+            placeholder="Contoh: 120"
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+              fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Number fields (weeks)
+    if (code === 'C2') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            Lag dari Jakarta (minggu) <span style={{ color: T.danger }}>*</span>
+          </label>
+          <input
+            type="number"
+            value={numberValue}
+            onChange={(e) => setNumberValue(e.target.value)}
+            placeholder="Contoh: 4"
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+              fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Textarea (long text)
+    if (code === 'M5') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            Cerita / Kasus Penutupan <span style={{ color: T.danger }}>*</span>
+          </label>
+          <textarea
+            value={textareaValue}
+            onChange={(e) => setTextareaValue(e.target.value)}
+            placeholder="Ceritakan kasus penutupan bisnis F&B di area ini..."
+            rows={4}
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+              fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none', resize: 'vertical',
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Tag input (list of items)
+    if (code === 'M3' || code === 'C5') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            {code === 'M3' ? 'Daftar Kompetitor' : 'Daftar Anchor Points'} <span style={{ color: T.danger }}>*</span>
+          </label>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              placeholder={code === 'M3' ? 'Nama kompetitor...' : 'Nama tempat...'}
+              style={{
+                flex: 1, padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+                fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+            />
+            <button
+              onClick={addTag}
+              style={{
+                padding: '10px 16px', borderRadius: 10, border: 'none',
+                fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: T.c50, background: T.p600, cursor: 'pointer',
+              }}
+            >
+              Tambah
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {tags.map(tag => (
+              <span key={tag} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '5px 10px', borderRadius: 8, background: T.p100, color: T.p600,
+                fontSize: 12, fontWeight: 600,
+              }}>
+                {tag}
+                <button onClick={() => removeTag(tag)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.p600, padding: 0, display: 'flex' }}>
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Category table (M1, M2)
+    if (code === 'M1' || code === 'M2') {
+      return (
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+            {code === 'M1' ? 'Jumlah Outlet per Subkategori' : 'Harga Rata-rata per Subkategori'} <span style={{ color: T.danger }}>*</span>
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+            {categoryRows.map((row, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={row.category}
+                  onChange={(e) => updateCategoryRow(idx, 'category', e.target.value)}
+                  placeholder="Subkategori (e.g., Kopi)"
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${T.c200}`,
+                    fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+                  }}
+                />
+                <input
+                  type="number"
+                  value={row.value}
+                  onChange={(e) => updateCategoryRow(idx, 'value', e.target.value)}
+                  placeholder={code === 'M1' ? 'Jumlah' : 'Harga (Rp)'}
+                  style={{
+                    width: 120, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${T.c200}`,
+                    fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+                  }}
+                />
+                <button onClick={() => removeCategoryRow(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.danger, padding: 4 }}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={addCategoryRow}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '7px 14px', borderRadius: 8, border: `1.5px dashed ${T.p600}`,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: T.p600, background: 'transparent', cursor: 'pointer',
+            }}
+          >
+            <Plus size={14} />
+            Tambah Baris
+          </button>
+        </div>
+      );
+    }
+
+    // Default text input
+    return (
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+          Nilai <span style={{ color: T.danger }}>*</span>
+        </label>
+        <input
+          type="text"
+          value={textValue}
+          onChange={(e) => setTextValue(e.target.value)}
+          placeholder="Masukkan nilai..."
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+            fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: T.c50, borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: 'calc(100vh - 40px)',
+          overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', border: `1px solid ${T.c200}`,
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${T.c200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.g900 }}>Submit Data Field</div>
+            <div style={{ fontSize: 12, color: T.g500, marginTop: 2 }}>Isi data observasi atau riset untuk cluster ini</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.g500, padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Field Selector */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+              Pilih Field <span style={{ color: T.danger }}>*</span>
+            </label>
+            <select
+              value={selectedCode}
+              onChange={(e) => { setSelectedCode(e.target.value); resetForm(); }}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+                fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none', cursor: 'pointer',
+              }}
+            >
+              <option value="">Pilih field...</option>
+              {submittableFields.map(f => (
+                <option key={f.fieldCode} value={f.fieldCode}>
+                  {f.fieldCode} — {f.fieldName} ({METHOD_LABEL[f.collectionMethod]})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Dynamic Input */}
+          {selectedCode && renderFieldInput()}
+
+          {/* Evidence Note */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+              Catatan Evidence
+            </label>
+            <textarea
+              value={evidenceNote}
+              onChange={(e) => setEvidenceNote(e.target.value)}
+              placeholder="Jelaskan bagaimana data ini dikumpulkan..."
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+                fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none', resize: 'vertical',
+              }}
+            />
+          </div>
+
+          {/* Evidence Photo — placeholder */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+              Foto Evidence
+            </label>
+            <div
+              style={{
+                padding: '24px 20px', borderRadius: 12, border: `1.5px dashed ${T.c200}`,
+                background: T.c100, textAlign: 'center', cursor: 'not-allowed', opacity: 0.7,
+              }}
+            >
+              <ImageIcon size={28} color={T.g500} style={{ margin: '0 auto 10px' }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.g500 }}>Upload Gambar</div>
+              <div style={{ fontSize: 11, color: T.g500, marginTop: 4 }}>Fitur upload akan tersedia segera</div>
+            </div>
+          </div>
+
+          {/* Evidence Photo URL (optional manual input) */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: T.g700, display: 'block', marginBottom: 8 }}>
+              URL Foto (opsional)
+            </label>
+            <input
+              type="text"
+              value={evidencePhotoUrl}
+              onChange={(e) => setEvidencePhotoUrl(e.target.value)}
+              placeholder="https://..."
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${T.c200}`,
+                fontFamily: 'inherit', fontSize: 13, color: T.g900, background: '#fff', outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !selectedCode}
+              style={{
+                flex: 1, padding: '10px 18px', borderRadius: 9999, border: 'none',
+                fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: '#fff', background: T.p600,
+                cursor: submitting || !selectedCode ? 'not-allowed' : 'pointer',
+                opacity: submitting || !selectedCode ? 0.6 : 1,
+              }}
+            >
+              {submitting ? (
+                <><Loader2 size={14} style={{ animation: 'lokal-spin 800ms linear infinite' }} />Memproses...</>
+              ) : (
+                <>Submit Field</>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              style={{ padding: '10px 18px', borderRadius: 9999, border: `1.5px solid ${T.c200}`, background: 'transparent', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: T.g700, cursor: 'pointer' }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

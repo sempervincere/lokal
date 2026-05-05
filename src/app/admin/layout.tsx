@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
@@ -8,6 +9,7 @@ import {
   FileText,
   MapPin,
   Users,
+  ShieldCheck,
   ShieldAlert,
   LogOut,
 } from 'lucide-react';
@@ -120,25 +122,101 @@ export default function AdminLayout({
     router.push('/');
   }
 
-  if (!ready) {
-    return (
+  // Show skeleton sidebar immediately, update with real info when ready
+  const sidebarContent = (
+    <aside
+      style={{
+        width: 240,
+        background: T.c50,
+        borderRight: `1px solid ${T.c200}`,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        position: 'sticky',
+        top: 0,
+        flexShrink: 0,
+      }}
+    >
+      {/* Logo + Admin Info */}
       <div
         style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          background: T.c50,
+          padding: '20px 20px 16px',
+          borderBottom: `1px solid ${T.c200}`,
         }}
       >
-        <LoadingSpinner size="lg" />
-        <div style={{ fontSize: 13, color: T.g500, marginTop: 16 }}>
-          Memuat admin dashboard...
-        </div>
+        <Image src="/logo.png" alt="LOKAL" width={80} height={28} style={{ objectFit: 'contain' }} />
+        {ready && adminInfo ? (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: T.p100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <ShieldCheck size={16} color={T.p600} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: T.g900 }}>{adminInfo.fullName}</div>
+              <div style={{ fontSize: 11, color: T.g500 }}>Administrator</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: T.c200 }} />
+            <div>
+              <div style={{ width: 80, height: 12, background: T.c200, borderRadius: 4, marginBottom: 4 }} />
+              <div style={{ width: 60, height: 10, background: T.c200, borderRadius: 4 }} />
+            </div>
+          </div>
+        )}
       </div>
-    );
-  }
+
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {NAV_ITEMS.map((n) => {
+          const active = activePage === n.id;
+          const IconComp = n.icon;
+          return (
+            <SidebarLink
+              key={n.id}
+              href={n.href}
+              active={active}
+              icon={<IconComp size={17} color={active ? T.p600 : T.g500} />}
+              label={n.label}
+            />
+          );
+        })}
+      </nav>
+
+      {/* Bottom */}
+      <div style={{ padding: '12px 10px', borderTop: `1px solid ${T.c200}` }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 13,
+            fontWeight: 500,
+            color: T.g500,
+            background: 'transparent',
+            transition: 'all 150ms',
+            textAlign: 'left',
+            width: '100%',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = T.c100;
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+          }}
+        >
+          <LogOut size={16} color={T.g500} />
+          Keluar
+        </button>
+      </div>
+    </aside>
+  );
 
   return (
     <div
@@ -150,135 +228,7 @@ export default function AdminLayout({
       }}
     >
       {/* Sidebar */}
-      <aside
-        style={{
-          width: 240,
-          background: T.c50,
-          borderRight: `1px solid ${T.c200}`,
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100vh',
-          position: 'sticky',
-          top: 0,
-          flexShrink: 0,
-        }}
-      >
-        {/* Logo + Admin Info */}
-        <div
-          style={{
-            padding: '20px 20px 16px',
-            borderBottom: `1px solid ${T.c200}`,
-          }}
-        >
-          <a href="/">
-            <Image
-              src="/logo.png"
-              alt="LOKAL"
-              width={80}
-              height={28}
-              style={{ objectFit: 'contain' }}
-            />
-          </a>
-          <div
-            style={{
-              marginTop: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background: T.p100,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <ShieldAlert size={16} color={T.p600} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: T.g900,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {adminInfo?.fullName ?? 'Admin'}
-              </div>
-              <div style={{ fontSize: 11, color: T.g500 }}>Administrator</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav
-          style={{
-            flex: 1,
-            padding: '12px 10px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-          }}
-        >
-          {NAV_ITEMS.map((n) => {
-            const active = activePage === n.id;
-            const IconComp = n.icon;
-            return (
-              <SidebarLink
-                key={n.id}
-                href={n.href}
-                active={active}
-                icon={<IconComp size={17} color={active ? T.p600 : T.g500} />}
-                label={n.label}
-              />
-            );
-          })}
-        </nav>
-
-        {/* Logout */}
-        <div
-          style={{ padding: '12px 10px', borderTop: `1px solid ${T.c200}` }}
-        >
-          <button
-            onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 10,
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontSize: 13,
-              fontWeight: 500,
-              color: T.g500,
-              background: 'transparent',
-              transition: 'all 150ms',
-              textAlign: 'left',
-              width: '100%',
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = T.c100)
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = 'transparent')
-            }
-          >
-            <LogOut size={16} color={T.g500} />
-            Keluar
-          </button>
-        </div>
-      </aside>
+      {sidebarContent}
 
       {/* Main Content */}
       <div
@@ -370,7 +320,7 @@ function SidebarLink({
 }) {
   const [hov, setHov] = useState(false);
   return (
-    <a
+    <Link
       href={href}
       style={{
         display: 'flex',
@@ -390,6 +340,6 @@ function SidebarLink({
     >
       {icon}
       {label}
-    </a>
+    </Link>
   );
 }

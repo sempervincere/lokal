@@ -20,7 +20,7 @@ import { createTransferCheckedInstruction, getAssociatedTokenAddressSync } from 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { wallet, clusterSlug } = body;
+    const { wallet, clusterSlug, targetWallet } = body;
 
     if (!wallet) {
       return NextResponse.json(
@@ -112,7 +112,9 @@ export async function POST(request: NextRequest) {
       Uint8Array.from(JSON.parse(process.env.PLATFORM_KEYPAIR!))
     );
     const platformAta = getAssociatedTokenAddressSync(idrxMint, platformWallet.publicKey);
-    const respondentAta = getAssociatedTokenAddressSync(idrxMint, walletPubkey);
+    // Use targetWallet if provided (email users specifying a different withdrawal address)
+    const destinationWallet = targetWallet ? new PublicKey(targetWallet) : walletPubkey;
+    const respondentAta = getAssociatedTokenAddressSync(idrxMint, destinationWallet);
 
     // Check platform balance
     const platformBalance = await connection.getTokenAccountBalance(platformAta);

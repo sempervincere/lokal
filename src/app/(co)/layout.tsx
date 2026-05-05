@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { id: 'profile',          href: '/co/profile',               icon: User,         label: 'Profil' },
 ];
 
-const KYC_BYPASS_EMAILS = ['dylansius.putra@gmail.com'];
+const KYC_BYPASS_EMAILS = ['dylansius.putra@gmail.com', 'rizky_setiawan@lokal.id', 'christopher@lokal.id'];
 
 export default function COLayout({ children }: { children: React.ReactNode }) {
   return (

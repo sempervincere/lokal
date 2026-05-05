@@ -242,7 +242,7 @@ export default function COClusterListPage() {
         <>
           {/* Backdrop */}
           <div onClick={() => setSelectedProposal(null)} style={{
-            position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.35)', backdropFilter: 'blur(4px)', zIndex: 40, transition: 'opacity 200ms',
+            position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.45)', zIndex: 40, transition: 'opacity 200ms',
           }} />
           {/* Panel */}
           <div style={{
@@ -388,7 +388,7 @@ export default function COClusterListPage() {
       {deleteModalOpen && selectedProposal && (
         <>
           <div onClick={() => { if (!deleting) setDeleteModalOpen(false); }} style={{
-            position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.35)', backdropFilter: 'blur(4px)', zIndex: 60,
+            position: 'fixed', inset: 0, background: 'rgba(26,26,26,0.45)', zIndex: 60,
           }} />
           <div style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',

@@ -10,11 +10,28 @@
  * Auth: Supabase session + role === 'CLUSTER_OWNER'
  */
 
+/**
+ * POST /api/co/fields
+ *
+ * Submit or update a ClusterFieldValue for a non-survey field.
+ * Only CLUSTER_OWNER can submit for their own cluster.
+ *
+ * Body:
+ * - fieldCode: string (required, must be non-survey field)
+ * - value: any (JSON, required)
+ * - evidenceNote?: string
+ * - evidencePhotoUrl?: string
+ */
+
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { TIER_1_FIELDS } from "@/lib/constants/field";
+import { TIER_1_FIELDS, TIER_1_FIELD_CODES } from "@/lib/constants/field";
 import { SURVEY_FIELDS, isBulkAcceptField } from "@/lib/constants/survey-fields";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GET
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -193,4 +210,123 @@ export async function GET(request: NextRequest) {
     surveyToken,
     fields: fieldsWithSurveyStats,
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   POST
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
+      return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+    }
+
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!dbUser || dbUser.role !== "CLUSTER_OWNER") {
+      return NextResponse.json({ error: "CLUSTER_OWNER_REQUIRED" }, { status: 403 });
+    }
+
+    const co = await prisma.clusterOwner.findUnique({
+      where: { userId: user.id },
+      include: { clusters: { select: { id: true, slug: true, name: true }, orderBy: { createdAt: 'desc' } } },
+    });
+
+    if (!co || co.clusters.length === 0) {
+      return NextResponse.json(
+        { error: "FORBIDDEN", message: "No cluster found for this CO" },
+        { status: 403 }
+      );
+    }
+
+    // For now, use the first cluster (or we could accept clusterSlug in body)
+    const cluster = co.clusters[0];
+    const clusterId = cluster.id;
+
+    const body = await request.json();
+    const { fieldCode, value, evidenceNote, evidencePhotoUrl } = body;
+
+    // Validate required fields
+    if (!fieldCode || value === undefined || value === null) {
+      return NextResponse.json(
+        { error: "BAD_REQUEST", message: "fieldCode and value are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate field code
+    const fieldDef = TIER_1_FIELD_CODES[fieldCode];
+    if (!fieldDef) {
+      return NextResponse.json(
+        { error: "BAD_REQUEST", message: `Invalid field code: ${fieldCode}` },
+        { status: 400 }
+      );
+    }
+
+    // Only allow non-survey fields (OBSERVATION or RESEARCH)
+    if (fieldDef.collectionMethod === "SURVEY") {
+      return NextResponse.json(
+        { error: "BAD_REQUEST", message: "Survey fields cannot be submitted directly. They are filled by respondents." },
+        { status: 400 }
+      );
+    }
+
+    // Check if field already exists and is VALIDATED
+    const existing = await prisma.clusterFieldValue.findUnique({
+      where: { clusterId_fieldCode: { clusterId, fieldCode } },
+    });
+
+    if (existing && existing.status === "VALIDATED") {
+      return NextResponse.json(
+        { error: "CONFLICT", message: "This field has already been validated and cannot be modified." },
+        { status: 409 }
+      );
+    }
+
+    // Upsert the field value
+    const upserted = await prisma.clusterFieldValue.upsert({
+      where: { clusterId_fieldCode: { clusterId, fieldCode } },
+      update: {
+        value,
+        evidenceNote: evidenceNote || null,
+        evidencePhotoUrl: evidencePhotoUrl || null,
+        status: "PENDING",
+        submittedAt: new Date(),
+      },
+      create: {
+        clusterId,
+        fieldCode,
+        fieldName: fieldDef.name,
+        tier: fieldDef.tier,
+        category: fieldDef.category,
+        collectionMethod: fieldDef.collectionMethod,
+        isComplex: fieldDef.isComplex,
+        value,
+        evidenceNote: evidenceNote || null,
+        evidencePhotoUrl: evidencePhotoUrl || null,
+        status: "PENDING",
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      field: {
+        id: upserted.id,
+        fieldCode: upserted.fieldCode,
+        fieldName: upserted.fieldName,
+        status: upserted.status,
+        collectionMethod: upserted.collectionMethod,
+        submittedAt: upserted.submittedAt,
+      },
+    });
+  } catch (error) {
+    console.error("[POST /api/co/fields] Error:", error);
+    return NextResponse.json(
+      { error: "INTERNAL_ERROR", message: "Failed to submit field" },
+      { status: 500 }
+    );
+  }
 }

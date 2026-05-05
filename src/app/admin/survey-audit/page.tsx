@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   ShieldAlert, CheckCircle2, XCircle, Clock, AlertTriangle,
   Filter, Search, ChevronDown, ChevronUp, Eye, Check, X,
@@ -101,6 +101,21 @@ export default function AdminSurveyAuditPage() {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Lock container scroll + auto-scroll to top when detail modal opens
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (detailModalOpen) {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+      el.style.overflow = 'hidden';
+    } else {
+      el.style.overflow = 'auto';
+    }
+    return () => { el.style.overflow = 'auto'; };
+  }, [detailModalOpen]);
+
   /* ── Fetch data ───────────────────────────────────────────────────────── */
 
   const fetchData = useCallback(async (page = 1) => {
@@ -198,7 +213,7 @@ export default function AdminSurveyAuditPage() {
   /* ── Render ───────────────────────────────────────────────────────────── */
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+    <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', animation: 'pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: T.g900, letterSpacing: '-0.01em' }}>
@@ -668,7 +683,7 @@ function DetailModal({
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(26,26,26,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onClick={onClose}
     >
       <div
