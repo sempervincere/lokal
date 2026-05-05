@@ -1380,6 +1380,124 @@ Target generation time: 30–60 seconds. Async via BullMQ queue to prevent API t
 | 0.4     | April 2025 | Narrowed to F&B niche; concept form with menu builder                                                                                                                                                                    |
 | 1.0     | April 2025 | Full PRD with market data, unit economics, user flows                                                                                                                                                                    |
 | 2.0     | April 2025 | Added: Reputation & Trust System, Business Model with detailed payment tables, Cluster Definition, Full Data Field Catalog (Tier 1/2/3), AI & Report Architecture, respondent incentivization, complex field definitions |
+| 3.0     | May 2025   | Added: Survey system with per-field CO review, Vault mechanism (8% revenue share to respondents), CO withdrawal with 2% platform fee, TipLink wallet integration, two demo clusters (Margonda + BSD Serpong)            |
+
+---
+
+## 19. Survey System (v3.0)
+
+### 19.1 Overview
+
+LOKAL's survey system enables Cluster Owners to collect field data from local respondents via a shareable form link. The system is designed for mobile-first, low-friction data collection with wallet-based reward distribution.
+
+### 19.2 Survey Flow
+
+```
+CO generates survey link → Shares via WhatsApp/social
+    ↓
+Respondent opens link → Connects wallet (Phantom or TipLink Gmail)
+    ↓
+Fills 15 survey fields across 5 categories → Submits
+    ↓
+CO reviews per field from /co/survey-responses → Approves/rejects with reason
+    ↓
+Admin validates approved fields → Field hash anchored on Solana
+    ↓
+Vault allocation when BO pays → Respondents earn IDRX rewards
+```
+
+### 19.3 Survey Fields (15 fields, 5 categories)
+
+| Category | Fields | Question Style |
+|----------|--------|----------------|
+| **Data Diri** (Demographic) | D1, D2, D3 | Simple select options |
+| **Kebiasaan** (Behavioural) | B1, B2, B3, B4, B5 | Category prices, scales, multi-select |
+| **Pasar** (Market) | M2, M3 | Category dropdown + price, text list |
+| **Sinyal Pasar** (Market Signals) | MS1, MS2 | Select, free text |
+| **Budaya & Akses** (Cultural) | C1, C3, C4 | Scale, multi-select, select |
+
+### 19.4 Wallet Connection for Respondents
+
+Respondents must connect a wallet before submitting:
+
+- **Phantom** — Standard Solana wallet for crypto-native users
+- **TipLink** — Email-based wallet creation (Gmail → auto-creates Solana wallet, respondent doesn't need to understand crypto)
+
+### 19.5 CO Review Process
+
+CO reviews responses **per field** (not per respondent):
+
+- View all responses for a specific field (e.g., all D1 answers)
+- Approve or reject individual responses with reason
+- Bulk accept for specific fields (D1-D3, B2, B4, B5, C1, C3)
+- Rejection threshold: >15% triggers admin audit
+
+### 19.6 CO Rejection Constraints
+
+| Rule | Enforcement |
+|------|-------------|
+| Must provide rejection reason | Required field when rejecting |
+| Cannot reject >15% without admin audit | Flagging system warns CO |
+| All raw responses stored | Even rejected ones visible to admin |
+| CO decisions are auditable | Admin can override CO rejections |
+
+---
+
+## 20. Vault Mechanism (v3.0)
+
+### 20.1 Overview
+
+The vault is a per-cluster reward pool funded by 8% of every BO session payment. It distributes IDRX proportionally to respondents based on their approved field contributions.
+
+### 20.2 Revenue Distribution Per Session
+
+| Recipient | Amount | Rate |
+|-----------|--------|------|
+| Platform | Rp 340,000-360,000 | 85-90% |
+| CO (tiered) | Rp 20,000-40,000 | 5-10% based on reputation |
+| **Respondent Vault** | **Rp 32,000** | **8% (fixed)** |
+
+### 20.3 Vault Distribution Formula
+
+```
+respondent_reward = (vault_allocation / total_approved_fields) × respondent_approved_fields
+```
+
+**Example:**
+- Vault allocation: 32,000 IDRX
+- Total approved fields across all respondents: 50
+- Respondent A contributed 5 approved fields
+- Respondent A's reward: (32,000 / 50) × 5 = 3,200 IDRX
+
+### 20.4 Withdrawal Mechanics
+
+| Parameter | Value |
+|-----------|-------|
+| Minimum withdrawal | 10,000 IDRX |
+| Platform fee | 0% (respondents) |
+| CO withdrawal fee | 2% |
+| Withdrawal method | On-chain IDRX transfer |
+| Distribution | Cumulative across multiple BO sessions |
+
+### 20.5 CO Withdrawal
+
+COs can withdraw their earnings from `/co/earnings`:
+
+- Earnings accumulate from session revenue share (5%/7%/10% based on tier)
+- 2% platform fee on withdrawal
+- Minimum withdrawal: 10,000 IDRX
+- On-chain IDRX transfer to CO's wallet
+
+---
+
+## 21. Two Demo Clusters (v3.0)
+
+| Cluster | Location | Anchor | Character |
+|---------|----------|--------|-----------|
+| **Jalan Margonda** | Depok | UI Gate + Margo City | Student-dominated, price-sensitive |
+| **The Breeze BSD** | Tangerang | The Breeze BSD City | Affluent professionals, higher spending |
+
+Both clusters are pre-seeded with 20 Tier 1 fields each, providing contrast for the demo.
 
 ---
 

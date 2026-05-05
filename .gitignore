@@ -11,4 +11,5 @@ node_modules/
 anchor/target/
 target/deploy/*-keypair.json
 
-# Documentations
+# Documentations & Marketing
+marketing/

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Send, Loader2, User, ShoppingBag, Store, BarChart3, Target, AlertCircle } from 'lucide-react';
 import { SURVEY_CATEGORIES, SURVEY_FIELDS, getSurveyFieldsByCategory } from '@/lib/constants/survey-fields';
 import { DemographicStep } from './steps/DemographicStep';
@@ -70,6 +70,31 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
       setErrors(prev => { const next = { ...prev }; delete next[fieldCode]; return next; });
     }
   }, [errors]);
+
+  // Check if current step is valid (all required fields filled) — real-time
+  const stepValid = useMemo(() => {
+    const stepFields = getSurveyFieldsByCategory(currentStepConfig.id);
+    for (const field of stepFields) {
+      if (!field.required) continue;
+      const value = values[field.code];
+      if (field.type === 'category_prices') {
+        if (!value || typeof value !== 'object' || Object.keys(value).length === 0) return false;
+        const hasAtLeastOne = Object.values(value).some(v => v !== undefined && v !== null && v !== '' && Number(v) > 0);
+        if (!hasAtLeastOne) return false;
+      } else if (field.type === 'multi_select') {
+        if (!Array.isArray(value) || value.length === 0) return false;
+      } else if (field.type === 'text_list') {
+        if (!Array.isArray(value) || value.length === 0) return false;
+      } else if (field.type === 'scale') {
+        if (value === undefined || value === null) return false;
+      } else if (field.type === 'text') {
+        if (!value || (typeof value === 'string' && value.trim().length === 0)) return false;
+      } else if (field.type === 'select') {
+        if (!value || value === '') return false;
+      }
+    }
+    return true;
+  }, [currentStepConfig.id, values]);
 
   const validateCurrentStep = useCallback((): boolean => {
     const stepFields = getSurveyFieldsByCategory(currentStepConfig.id);
@@ -249,14 +274,15 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
         {isLastStep ? (
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !stepValid}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '11px 24px', borderRadius: 9999, border: 'none',
               fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-              color: '#fff', background: T.p600, cursor: submitting ? 'not-allowed' : 'pointer',
+              color: '#fff', background: stepValid ? T.p600 : T.g500,
+              cursor: (submitting || !stepValid) ? 'not-allowed' : 'pointer',
               opacity: submitting ? 0.6 : 1, transition: 'all 150ms',
-              boxShadow: submitting ? 'none' : '0 4px 14px rgba(27,122,101,0.3)',
+              boxShadow: (submitting || !stepValid) ? 'none' : '0 4px 14px rgba(27,122,101,0.3)',
             }}
           >
             {submitting ? <><Loader2 size={16} style={{ animation: 'lokal-spin 800ms linear infinite' }} />Mengirim...</>
@@ -265,12 +291,15 @@ export function SurveyWizard({ wallet, email, clusterSlug, clusterName, token, o
         ) : (
           <button
             onClick={handleNext}
+            disabled={!stepValid}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '11px 24px', borderRadius: 9999, border: 'none',
               fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-              color: '#fff', background: T.p600, cursor: 'pointer',
-              transition: 'all 150ms', boxShadow: '0 4px 14px rgba(27,122,101,0.3)',
+              color: '#fff', background: stepValid ? T.p600 : T.g500,
+              cursor: stepValid ? 'pointer' : 'not-allowed',
+              opacity: stepValid ? 1 : 0.6, transition: 'all 150ms',
+              boxShadow: stepValid ? '0 4px 14px rgba(27,122,101,0.3)' : 'none',
             }}
           >
             Selanjutnya

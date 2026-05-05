@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -51,7 +51,7 @@ function SurveyPageInner({ params, searchParams }: SurveyPageProps) {
   const [email, setEmail] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [existingSubmission, setExistingSubmission] = useState<any>(null);
-  const [justDisconnected, setJustDisconnected] = useState(false);
+  const justDisconnectedRef = useRef(false);
 
   useEffect(() => {
     if (!token) { setError('Token survey tidak valid'); setLoading(false); return; }
@@ -64,19 +64,21 @@ function SurveyPageInner({ params, searchParams }: SurveyPageProps) {
 
   const handleWalletConnect = useCallback((walletAddress: string, emailAddress?: string) => {
     // Ignore auto-reconnect right after user explicitly disconnected
-    if (justDisconnected) {
-      setJustDisconnected(false);
+    if (justDisconnectedRef.current) {
+      justDisconnectedRef.current = false;
       return;
     }
     setWallet(walletAddress);
     if (emailAddress) setEmail(emailAddress);
-  }, [justDisconnected]);
+  }, []);
 
   const handleDisconnect = useCallback(() => {
-    setJustDisconnected(true);
+    justDisconnectedRef.current = true;
     disconnect();
     setWallet(null);
     setEmail(null);
+    // Reset ref after a short delay to allow the wallet adapter state to settle
+    setTimeout(() => { justDisconnectedRef.current = false; }, 500);
   }, [disconnect]);
 
   const handleSurveyComplete = useCallback(() => {

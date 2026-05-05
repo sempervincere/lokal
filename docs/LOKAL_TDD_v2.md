@@ -1289,6 +1289,27 @@ export async function GET(
 | Free chat abuse (>7 messages via direct API) | DB count check on every message request, not client-side |
 | Survey link spamming (post-MVP)              | Device fingerprint + CO review layer                     |
 
+### Survey Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| Respondent submits duplicate survey | Check for existing `SurveyResponse` with same wallet + cluster |
+| CO rejects >15% of responses | Warning flag shown to CO; admin notified for audit |
+| Respondent disconnects wallet mid-survey | Use `useRef` to prevent auto-reconnect after disconnect |
+| TipLink API unavailable | Fallback to deterministic wallet placeholder for demo |
+| Survey step validation fails | Gray button state + error count summary shown |
+| CO reviews field with no responses | Show empty state with "No responses yet" message |
+
+### Vault Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| No approved respondents when BO pays | 8% goes to `totalPool` but `distributed = 0`; sits idle |
+| Vault balance < minimum withdrawal | Show "Minimum 10,000 IDRX" message; disable withdraw button |
+| Platform wallet insufficient IDRX | Return `INSUFFICIENT_FUNDS` error; admin notified |
+| Multiple BO sessions accumulate rewards | Claims increment `amount` field; cumulative across sessions |
+| CO withdrawal below minimum | Return `BELOW_MINIMUM` error with current balance |
+
 ---
 
 ## 11. Environment Variables
@@ -1298,6 +1319,7 @@ export async function GET(
 
 # ── DATABASE ──────────────────────────────────────────
 DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres"
+DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT_ID].supabase.co:5432/postgres"
 
 # ── SUPABASE ──────────────────────────────────────────
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT_ID].supabase.co"
@@ -1305,11 +1327,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 SUPABASE_SERVICE_ROLE_KEY="eyJ..."        # Server only — never expose to frontend
 
 # ── AI ────────────────────────────────────────────────
-ANTHROPIC_API_KEY="sk-ant-..."
+ANTHROPIC_API_KEY="sk-ant-..."            # Used by anthropicClient.ts (actually Groq)
+ANTHROPIC_BASE_URL="https://api.groq.com/openai/v1"
+GROQ_API_KEY="gsk_..."
+AI_MODEL="meta-llama/llama-4-scout-17b-16e-instruct"
 
 # ── SOLANA ────────────────────────────────────────────
 NEXT_PUBLIC_SOLANA_NETWORK="devnet"
 HELIUS_RPC_URL="https://devnet.helius-rpc.com/?api-key=..."
+NEXT_PUBLIC_HELIUS_RPC_URL="https://devnet.helius-rpc.com/?api-key=..."
 HELIUS_API_KEY="..."
 HELIUS_WEBHOOK_SECRET="..."               # For HMAC verification
 NEXT_PUBLIC_IDRX_MINT_ADDRESS="..."       # IDRX SPL token mint on devnet
@@ -1327,6 +1353,9 @@ CLOUDFLARE_R2_PUBLIC_URL="https://reports.lokal.id"
 
 # ── MAP ───────────────────────────────────────────────
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ..."
+
+# ── TIPLINK ───────────────────────────────────────────
+TIPLINK_API_KEY="..."                     # TipLink wallet creation for survey respondents
 ```
 
 ---
@@ -1523,6 +1552,11 @@ This is the only thing that matters on demo day. Every checkbox must pass before
 | **Session**          | One paid consultation unit. Includes 1 report + 12-hour AI chat window. Costs 400,000 IDRX.                                                                                |
 | **Soulbound NFT**    | Non-transferable NFT. Used as CO credential. Enforced by Metaplex Core's NonTransferable plugin.                                                                           |
 | **SPL Token**        | Solana Program Library token standard (equivalent to ERC-20). IDRX is an SPL token.                                                                                        |
+| **Survey Response**  | A respondent's submission containing 15 field answers. Stored in `survey_responses` + `survey_field_responses` tables.                                                    |
+| **Vault**            | Per-cluster reward pool funded by 8% of session revenue. Distributed proportionally to respondents based on approved field count.                                          |
+| **VaultClaim**       | A respondent's share of the vault. Created when CO approves their survey responses. Amount accumulates across multiple BO sessions.                                        |
+| **TipLink**          | Email-based wallet creation service. Allows respondents to participate without understanding crypto — Gmail creates a Solana wallet automatically.                          |
+| **Bulk Accept**      | CO feature to approve all pending responses for specific fields (D1-D3, B2, B4, B5, C1, C3) at once.                                                                      |
 
 ---
 
