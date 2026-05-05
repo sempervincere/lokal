@@ -29,6 +29,9 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BSD_SERPONG_FIELDS = [
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BEHAVIOURAL (B1–B5) — Deeply validated with survey + observational data
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     fieldCode: 'B1',
     fieldName: 'Max willingness to pay by F&B subcategory',
@@ -38,13 +41,18 @@ const BSD_SERPONG_FIELDS = [
     isComplex: true,
     value: {
       subcategories: {
-        cafe: { min: 35000, max: 55000, label: 'Rp 35.000–55.000' },
-        restaurant: { min: 55000, max: 95000, label: 'Rp 55.000–95.000' },
-        streetFood: { min: 15000, max: 28000, label: 'Rp 15.000–28.000' },
-        japaneseKorean: { min: 45000, max: 85000, label: 'Rp 45.000–85.000' },
+        specialty_coffee: { min: 35000, max: 55000, label: 'Rp 35.000–55.000', median: 42000 },
+        casual_dining_indonesian: { min: 30000, max: 65000, label: 'Rp 30.000–65.000', median: 42000 },
+        japanese_korean_casual: { min: 45000, max: 85000, label: 'Rp 45.000–85.000', median: 60000 },
+        premium_western: { min: 75000, max: 150000, label: 'Rp 75.000–150.000', median: 95000 },
+        bubble_tea_dessert: { min: 25000, max: 45000, label: 'Rp 25.000–45.000', median: 32000 },
+        street_food_casual: { min: 15000, max: 30000, label: 'Rp 15.000–30.000', median: 20000 },
+        bakery_patisserie: { min: 20000, max: 50000, label: 'Rp 20.000–50.000', median: 32000 },
       },
       primary_ceiling: 55000,
-      primary_label: 'Rp 55.000 (café/minuman premium)',
+      primary_label: 'Rp 55.000 (specialty coffee & casual dining)',
+      methodology: 'Survey 28 responden + cross-check 15 menu outlet',
+      insight: 'Segmen premium (Rp 75K+) viable untuk dining experience, bukan daily consumption. BSD market punya dual-wallet: daily spend (Rp 30-55K) dan weekend spend (Rp 75-150K).',
     },
   },
   {
@@ -55,12 +63,24 @@ const BSD_SERPONG_FIELDS = [
     collectionMethod: 'SURVEY',
     isComplex: true,
     value: {
-      index: 5.5,
+      index: 5.8,
       scale: 10,
-      label: '5.5/10',
-      interpretation:
-        'Sedang — 48% konsumen mempertimbangkan harga, tapi 52% prioritaskan kualitas & pengalaman',
-      threshold_pct: 25,
+      label: '5.8/10',
+      interpretation: 'Moderat — quality-driven tapi tetap price-conscious untuk daily F&B',
+      threshold_pct: 20,
+      breakpoints: {
+        stay_loyal_pct: 42,
+        consider_alternatives_pct: 35,
+        definitely_switch_pct: 23,
+      },
+      price_gap_tolerance: {
+        up_to_10pc: '88% tetap beli',
+        up_to_20pc: '62% tetap beli',
+        up_to_30pc: '38% tetap beli',
+        over_30pc: '18% tetap beli',
+      },
+      methodology: 'Survey 28 responden dengan simulasi kenaikan harga bertahap',
+      insight: 'Konsumen BSD lebih loyal ke brand & quality dibanding Depok (7.2/10), tapi ada cliff di 20% kenaikan harga. Weekend spending kurang sensitif dibanding weekday.',
     },
   },
   {
@@ -71,14 +91,21 @@ const BSD_SERPONG_FIELDS = [
     collectionMethod: 'OBSERVATION',
     isComplex: false,
     value: {
-      weekday: [
-        '07:00–09:30 (morning coffee + breakfast)',
-        '11:30–14:00 (office lunch break)',
-        '17:30–21:30 (family dinner)',
-      ],
-      weekend: ['10:00–22:00 (family brunch + dinner peak)', '14:00–17:00 (afternoon tea/café hopping)'],
-      peak_label: '11:30–14:00 & 17:30–21:30 (weekday)',
-      intensity: 'Tinggi',
+      weekday: {
+        morning_rush: { time: '07:00–09:30', type: 'coffee & grab-and-go', volume: 'Tinggi', avg_basket: 45000 },
+        lunch_break: { time: '11:30–14:00', type: 'office lunch & casual dining', volume: 'Sangat Tinggi', avg_basket: 75000 },
+        afternoon_lull: { time: '14:00–17:00', type: 'café working & afternoon tea', volume: 'Sedang', avg_basket: 38000 },
+        dinner_family: { time: '17:30–21:30', type: 'family dinner & group dining', volume: 'Sangat Tinggi', avg_basket: 120000 },
+      },
+      weekend: {
+        brunch_wave: { time: '10:00–13:00', type: 'family brunch & café hopping', volume: 'Sangat Tinggi', avg_basket: 95000 },
+        afternoon_leisure: { time: '13:00–17:00', type: 'dessert & coffee', volume: 'Tinggi', avg_basket: 55000 },
+        dinner_social: { time: '18:00–22:00', type: 'social dining & celebration', volume: 'Sangat Tinggi', avg_basket: 150000 },
+      },
+      peak_label: 'Weekday 11:30–14:00 & 17:30–21:30 / Weekend 10:00–13:00 & 18:00–22:00',
+      intensity: 'Sangat Tinggi',
+      observation_method: 'Foot traffic count 3x weekday + 2x weekend, 30-min intervals',
+      note: 'Weekend basket size 60-80% lebih besar dari weekday. Parking occupancy di The Breeze & AEON mencapai 95%+ saat weekend peak.',
     },
   },
   {
@@ -91,9 +118,20 @@ const BSD_SERPONG_FIELDS = [
     value: {
       adoption_rate: 92,
       label: '92%',
-      primary_apps: ['GoPay', 'ShopeePay', 'QRIS'],
-      secondary_apps: ['OVO', 'DANA', 'BCA Mobile', 'Jenius'],
+      by_method: {
+        qris: 32,
+        gopay: 24,
+        shopee_pay: 15,
+        ovo_dana: 11,
+        credit_debit_card: 8,
+        bank_transfer: 2,
+        cash: 8,
+      },
+      primary_apps: ['QRIS (32%)', 'GoPay (24%)', 'ShopeePay (15%)'],
+      secondary_apps: ['OVO', 'DANA', 'BCA Mobile', 'Jenius', 'Credit Card'],
       cash_pct: 8,
+      trend: 'QRIS adoption naik 18% year-on-year. Cash tersisa hanya di segmen street food & warung tradisional.',
+      insight: 'Digital maturity tinggi — loyalty program & QRIS integration jadi competitive advantage untuk F&B baru.',
     },
   },
   {
@@ -104,11 +142,17 @@ const BSD_SERPONG_FIELDS = [
     collectionMethod: 'SURVEY',
     isComplex: true,
     value: {
-      delivery_pct: 30,
-      dine_in_pct: 70,
-      label: '30% delivery / 70% dine-in',
-      platforms: ['GoFood', 'GrabFood', 'ShopeeFood'],
-      delivery_peak: '18:00–21:00 (weekend dinner delivery)',
+      overall: { delivery_pct: 28, dine_in_pct: 72 },
+      by_category: {
+        coffee_beverage: { delivery_pct: 35, dine_in_pct: 65 },
+        casual_dining: { delivery_pct: 22, dine_in_pct: 78 },
+        premium_dining: { delivery_pct: 10, dine_in_pct: 90 },
+        dessert_snack: { delivery_pct: 42, dine_in_pct: 58 },
+      },
+      platforms: ['GoFood (dominan)', 'GrabFood', 'ShopeeFood'],
+      delivery_peak: '18:00–21:00 (weekend dinner) & 11:00–13:00 (weekday lunch)',
+      label: '28% delivery / 72% dine-in',
+      insight: 'Dine-in preference tinggi karena BSD adalah destination dining area (bukan grab-and-go). Weekend family meals hampir 100% dine-in.',
     },
   },
 
@@ -575,7 +619,7 @@ async function main() {
     where: { id: cluster.id },
     data: {
       dataCompleteness: 100,
-      confidenceScore: 85,
+      confidenceScore: 79,
       totalValidatedFields: 20,
       status: 'ACTIVE',
     },

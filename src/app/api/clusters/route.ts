@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const clusters = await prisma.cluster.findMany({
+      where: {status: "ACTIVE"},
       select: {
         id: true,
         slug: true,
