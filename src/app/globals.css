@@ -82,6 +82,82 @@ body {
   50% { transform: scale(1.05); opacity: 0.5; }
 }
 
+/* Floating particle animation */
+@keyframes floatParticle {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  25% { transform: translate(10px, -20px) scale(1.1); opacity: 0.8; }
+  50% { transform: translate(-5px, -35px) scale(0.9); opacity: 0.5; }
+  75% { transform: translate(15px, -15px) scale(1.05); opacity: 0.7; }
+}
+
+/* Data node pulse */
+@keyframes dataNodePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(27, 122, 101, 0.4); }
+  50% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(27, 122, 101, 0); }
+}
+
+/* Connection line draw */
+@keyframes lineDraw {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  100% { stroke-dashoffset: 0; opacity: 0.3; }
+}
+
+/* Gradient mesh shift */
+@keyframes meshShift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* Counter tick */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Waiting list card float */
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+/* Pulse ring */
+@keyframes pulseRing {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Orbit animation */
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(60px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(60px) rotate(-360deg); }
+}
+
+/* Typing cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Grid line travel */
+@keyframes gridTravel {
+  0% { stroke-dashoffset: 200; opacity: 0; }
+  50% { opacity: 0.15; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+/* Stat number glow */
+@keyframes statGlow {
+  0%, 100% { text-shadow: 0 0 20px rgba(27, 122, 101, 0.2); }
+  50% { text-shadow: 0 0 40px rgba(27, 122, 101, 0.5); }
+}
+
 /* Fade in up */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -180,3 +256,5 @@ body {
 .animate-page-enter {
   animation: pageEnter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+

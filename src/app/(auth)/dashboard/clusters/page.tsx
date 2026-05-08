@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { useSearchParams } from 'next/navigation';
-import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check, TrendingUp, MapPin, DollarSign, Target, Rocket, ShieldAlert, LineChart } from 'lucide-react';
+import { Search, Eye, MessageCircle, ChevronLeft, TrendingDown, CreditCard, Clock, Users, Activity, BarChart2, ShieldCheck, Sparkles, Lock, ArrowRight, Check, TrendingUp, MapPin, DollarSign, Target, Rocket, ShieldAlert, LineChart, Loader2 } from 'lucide-react';
 import { BOReport } from '@/components/session/BOReport';
 import { BOConsultationChat } from '@/components/session/BOConsultationChat';
 import { T, ClusterData } from '@/lib/constants/mock-data';
@@ -122,7 +122,8 @@ import { Suspense } from 'react';
 function BOClustersPageInner() {
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get('sessionId');
-  const [view, setView] = useState<View>(initialSessionId ? 'report' : 'list');
+  const demoClusterId = searchParams.get('demoClusterId'); // ?demoClusterId=xxx → skip to form (hackathon)
+  const [view, setView] = useState<View>(initialSessionId ? 'report' : demoClusterId ? 'form' : 'list');
   const [selected, setSelected] = useState<ClusterData | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [cachedSession, setCachedSession] = useState<any | null>(null);
@@ -220,6 +221,16 @@ function BOClustersPageInner() {
     }
   }, [initialSessionId, clusters, selected]);
 
+  // Demo flow: ?demoClusterId=xxx → skip paywall, go directly to form
+  useEffect(() => {
+    if (demoClusterId && clusters.length > 0 && view === 'form' && !selected) {
+      const matchingCluster = clusters.find(c => c.id === demoClusterId);
+      if (matchingCluster) {
+        setSelected(matchingCluster);
+      }
+    }
+  }, [demoClusterId, clusters, view, selected]);
+
   const filtered = clusters.filter(c => {
     const q = search.toLowerCase();
     const mq = !q || c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q);
@@ -234,8 +245,8 @@ function BOClustersPageInner() {
 
   if (view === 'consultation' && selected) return <BOConsultationChat cluster={selected} sessionId={sessionId} onBack={() => setView('report')} expiresAt={cachedSession?.expiresAt ?? null} initialMsgs={chatHistory} onMsgsChange={setChatHistory} isExpired={isExpired} />;
   if (view === 'report' && selected) return <BOReport cluster={selected} sessionId={sessionId} onBack={() => setView('list')} onStartConsultation={() => setView('consultation')} onViewHistory={() => setView('consultation')} initialSession={cachedSession} onSessionLoaded={(s) => setCachedSession(s)} isExpired={isExpired} />;
-  if (view === 'form' && selected) return <BOConceptForm cluster={selected} onBack={() => setView('detail')} onSubmit={(sid) => { setSessionId(sid); setView('report'); }} />;
-  if (view === 'paywall' && selected) return <BOPaywall cluster={selected} onClose={() => setView('detail')} onContinue={() => setView('form')} />;
+  if (view === 'form' && selected) return <BOConceptForm cluster={selected} onBack={() => setView('detail')} onSubmit={(sid) => { setSessionId(sid); setView('report'); }} sessionId={sessionId} />;
+  if (view === 'paywall' && selected) return <BOPaywall cluster={selected} onClose={() => setView('detail')} onContinue={(sid) => { setSessionId(sid); setView('form'); }} />;
   if (view === 'chat' && selected) return <BOChat cluster={selected} onBack={() => setView('detail')} onPaywall={() => setView('paywall')} />;
   if (view === 'detail' && selected) return <BOClusterDetail cluster={selected} onBack={() => setView('list')} onChat={() => setView('chat')} onSkipToReport={() => setView('paywall')} />;
 
@@ -782,15 +793,71 @@ function BOChat({ cluster: c, onBack, onPaywall }: { cluster: ClusterData; onBac
   );
 }
 
-function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; onClose: () => void; onContinue: () => void }) {
-  const { publicKey } = useWallet();
+function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; onClose: () => void; onContinue: (sessionId: string) => void }) {
+  const { publicKey, sendTransaction } = useWallet();
   const [showWalletPopup, setShowWalletPopup] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [paymentStep, setPaymentStep] = useState('');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  const handlePayClick = () => {
+  const handlePayClick = async () => {
     if (!publicKey) {
       setShowWalletPopup(true);
-    } else {
-      onContinue();
+      return;
+    }
+
+    setPaying(true);
+    setPaymentError(null);
+
+    try {
+      // 1. Create PENDING_PAYMENT session
+      setPaymentStep('Membuat sesi...');
+      const sessionRes = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clusterId: c.id }),
+      });
+      if (!sessionRes.ok) {
+        const err = await sessionRes.json().catch(() => ({ error: 'Gagal membuat sesi' }));
+        throw new Error(err.error ?? 'Gagal membuat sesi');
+      }
+      const { sessionId } = await sessionRes.json();
+
+      // 2. Build payment transaction
+      setPaymentStep('Membangun transaksi...');
+      const { createPaymentTransaction } = await import('@/lib/solana/idrxTransfer');
+      const tx = createPaymentTransaction(publicKey, sessionId);
+
+      // 3. Send to Phantom
+      setPaymentStep('Konfirmasi di Phantom...');
+      const { Connection } = await import('@solana/web3.js');
+      const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL!;
+      const conn = new Connection(rpcUrl, 'confirmed');
+      const signature = await sendTransaction(tx, conn);
+
+      // 4. Wait for on-chain confirmation
+      setPaymentStep('Menunggu konfirmasi on-chain...');
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash('confirmed');
+      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed');
+
+      // 5. Poll session status until webhook confirms payment
+      setPaymentStep('Menunggu verifikasi pembayaran...');
+      const start = Date.now();
+      const timeout = 120_000; // 2 minute timeout
+      while (Date.now() - start < timeout) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollRes = await fetch(`/api/sessions/${sessionId}`);
+        if (!pollRes.ok) continue;
+        const pollData = await pollRes.json();
+        if (pollData.status === 'PAYMENT_CONFIRMED') {
+          onContinue(sessionId);
+          return;
+        }
+      }
+      throw new Error('Pembayaran belum terverifikasi. Coba refresh halaman — jika IDRX sudah terkirim, sesi akan aktif otomatis.');
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Gagal memproses pembayaran');
+      setPaying(false);
     }
   };
 
@@ -798,9 +865,8 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; 
   useEffect(() => {
     if (publicKey && showWalletPopup) {
       setShowWalletPopup(false);
-      onContinue();
     }
-  }, [publicKey, showWalletPopup, onContinue]);
+  }, [publicKey, showWalletPopup]);
 
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, position: 'relative' }}>
@@ -852,10 +918,31 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; 
             <span style={{ fontSize: 13, color: T.g700 }}>{f}</span>
           </div>
         ))}
+
+        {paymentError && (
+          <div style={{ margin: '16px 0 0', padding: '10px 14px', background: '#FEF2F2', borderRadius: 10, fontSize: 12, color: '#EF4444', lineHeight: 1.5 }}>
+            {paymentError}
+          </div>
+        )}
+
+        {paying && (
+          <div style={{ marginTop: 20, padding: '14px 18px', background: T.p100, borderRadius: 12, border: `1px solid ${T.c200}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Loader2 size={20} color={T.p600} style={{ animation: 'spin 1s linear infinite' }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.g900 }}>{paymentStep}</div>
+              <div style={{ fontSize: 11, color: T.g500, marginTop: 2 }}>Jangan tutup halaman ini</div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-          <Button variant="ghost" onClick={onClose}>Batal</Button>
-          <Button variant="accent" full onClick={handlePayClick} style={{ justifyContent: 'center' }}>
-            Bayar Sekarang Rp 400.000
+          <Button variant="ghost" onClick={onClose} disabled={paying}>Batal</Button>
+          <Button variant="accent" full onClick={handlePayClick} disabled={paying} style={{ justifyContent: 'center' }}>
+            {paying ? (
+              <><Loader2 size={15} color={T.c50} style={{ animation: 'spin 1s linear infinite' }} /> Memproses...</>
+            ) : (
+              'Bayar Sekarang Rp 400.000'
+            )}
           </Button>
         </div>
         <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: T.g500 }}>
@@ -869,7 +956,7 @@ function BOPaywall({ cluster: c, onClose, onContinue }: { cluster: ClusterData; 
   );
 }
 
-function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: ClusterData; onBack: () => void; onSubmit: (sessionId: string) => void }) {
+function BOConceptForm({ cluster: c, onBack, onSubmit, sessionId: externalSessionId }: { cluster: ClusterData; onBack: () => void; onSubmit: (sessionId: string) => void; sessionId?: string | null }) {
   const [step, setStep] = useState(0);
   const [subs, setSubs] = useState<string[]>([]);  // multi-select categories
   const [name, setName] = useState('');
@@ -1143,25 +1230,45 @@ function BOConceptForm({ cluster: c, onBack, onSubmit }: { cluster: ClusterData;
               const validMenuItems = menu
                 .filter(m => m.name.trim() && m.price)
                 .map(m => ({ name: m.name.trim(), price: Number(m.price) }));
-              const res = await fetch('/api/sessions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  clusterId: c.id,
-                  fbSubcategory: subs.join(', '),
-                  conceptName: name,
-                  conceptDescription: `[${tier}] ${description}`,
-                  targetCustomer: target,
-                  specificQuestions: notes || null,
-                  menuItems: validMenuItems,
-                }),
-              });
-              if (!res.ok) {
-                const err = await res.json().catch(() => ({ error: 'Gagal membuat sesi' }));
-                throw new Error(err.error ?? 'Gagal membuat sesi');
+              const formData = {
+                fbSubcategory: subs.join(', '),
+                conceptName: name,
+                conceptDescription: `[${tier}] ${description}`,
+                targetCustomer: target,
+                specificQuestions: notes || null,
+                menuItems: validMenuItems,
+              };
+
+              if (externalSessionId) {
+                // Payment already confirmed — submit concept form to existing session
+                const res = await fetch(`/api/sessions/${externalSessionId}/concept`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(formData),
+                });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({ error: 'Gagal mengirim form' }));
+                  throw new Error(err.error ?? err.message ?? 'Gagal mengirim form');
+                }
+                const { sessionId } = await res.json();
+                onSubmit(sessionId);
+              } else {
+                // Demo/legacy flow — create session + concept + report in one call
+                const res = await fetch('/api/sessions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    clusterId: c.id,
+                    ...formData,
+                  }),
+                });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({ error: 'Gagal membuat sesi' }));
+                  throw new Error(err.error ?? 'Gagal membuat sesi');
+                }
+                const { sessionId } = await res.json();
+                onSubmit(sessionId);
               }
-              const { sessionId } = await res.json();
-              onSubmit(sessionId);
             } catch (err) {
               setSubmitError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.');
               setSubmitting(false);
