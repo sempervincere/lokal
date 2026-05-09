@@ -147,7 +147,7 @@ export default function AdminUsersPage() {
           User Management
         </div>
         <div style={{ fontSize: 14, color: T.g500, marginTop: 4 }}>
-          Kelola dan audit semua pengguna LOKAL — Business Owner, Cluster Owner, dan Admin.
+          Kelola dan audit semua pengguna LOKAL: Business Owner, Cluster Owner, dan Admin.
         </div>
       </div>
 
@@ -315,7 +315,7 @@ export default function AdminUsersPage() {
                         </button>
                       </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: T.g500 }}>—</span>
+                      <span style={{ fontSize: 11, color: T.g500 }}>Tidak ada</span>
                     )}
                   </div>
 
@@ -332,7 +332,7 @@ export default function AdminUsersPage() {
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.companyName}</span>
                       </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: T.g500 }}>—</span>
+                      <span style={{ fontSize: 11, color: T.g500 }}>Tidak ada</span>
                     )}
                   </div>
 
@@ -472,9 +472,9 @@ function UserDetailModal({ user, onClose, onCopy, copiedWallet }: { user: UserIt
           {/* Info Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <InfoItem icon={<Mail size={13} color={T.g500} />} label="Email" value={user.email} />
-            <InfoItem icon={<Phone size={13} color={T.g500} />} label="Telepon" value={user.phoneNumber || '—'} />
-            <InfoItem icon={<Building2 size={13} color={T.g500} />} label="Perusahaan" value={user.companyName || '—'} />
-            <InfoItem icon={<Briefcase size={13} color={T.g500} />} label="Pekerjaan" value={user.jobTitle || '—'} />
+            <InfoItem icon={<Phone size={13} color={T.g500} />} label="Telepon" value={user.phoneNumber || 'Tidak ada'} />
+            <InfoItem icon={<Building2 size={13} color={T.g500} />} label="Perusahaan" value={user.companyName || 'Tidak ada'} />
+            <InfoItem icon={<Briefcase size={13} color={T.g500} />} label="Pekerjaan" value={user.jobTitle || 'Tidak ada'} />
             <InfoItem icon={<Calendar size={13} color={T.g500} />} label="Bergabung" value={new Date(user.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} />
             <InfoItem icon={<TrendingUp size={13} color={T.g500} />} label="Kredit" value={user.credits.toLocaleString('id')} />
           </div>

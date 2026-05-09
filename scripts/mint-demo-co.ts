@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 config({ path: '.env.local' });
 import { mintCoCredentialNft } from '../src/lib/solana/mintCoNft';
 
-const CO_NAME = 'Dylan Setiawan';
+const CO_NAME = 'Rizky Setiawan';
 const CLUSTER_SLUG = 'depok-margonda-001';
 const CO_WALLET = process.env.DEMO_CO_WALLET!;
 

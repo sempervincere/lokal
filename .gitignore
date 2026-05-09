@@ -13,3 +13,8 @@ target/deploy/*-keypair.json
 
 # Documentations & Marketing
 marketing/
+scripts/
+docs/
+
+claude-session.jsonl
+tsconfig.tsbuildinfo

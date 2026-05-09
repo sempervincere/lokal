@@ -49,8 +49,10 @@ export async function mintCoCredentialNft(
     ],
   }).sendAndConfirm(umi);
 
+  const bs58 = require('bs58');
+
   return {
     mintAddress: assetSigner.publicKey.toString(),
-    txSignature: Buffer.from(signature).toString('base64'),
+    txSignature: bs58.encode(signature),
   };
 }

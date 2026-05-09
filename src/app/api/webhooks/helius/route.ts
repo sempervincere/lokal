@@ -13,16 +13,25 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request: NextRequest) {
   try {
+    // Security: validate webhook secret via query param AND timing-safe comparison
     const { searchParams } = new URL(request.url);
-    const secret = searchParams.get("secret");
+    const secret = searchParams.get("secret") ?? "";
 
-    const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET;
+    const webhookSecret = process.env.HELIUS_WEBHOOK_SECRET ?? "";
     if (!webhookSecret) {
       console.error("[Helius Webhook] HELIUS_WEBHOOK_SECRET not configured");
-      return new Response("Webhook secret not configured", { status: 500 });
+      return new Response("Internal error", { status: 500 });
     }
 
-    if (!secret || secret !== webhookSecret) {
+    // Timing-safe comparison to prevent timing attacks
+    const { timingSafeEqual } = await import("crypto");
+    const secretBuf = Buffer.from(secret);
+    const expectedBuf = Buffer.from(webhookSecret);
+    const isValid =
+      secretBuf.length === expectedBuf.length &&
+      timingSafeEqual(secretBuf, expectedBuf);
+
+    if (!isValid) {
       console.error("[Helius Webhook] Invalid or missing secret");
       return new Response("Unauthorized", { status: 401 });
     }

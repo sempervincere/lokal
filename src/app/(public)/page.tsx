@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { MapPin, MessageCircle, FileText, ShieldCheck, Clock, ArrowRight, Check, Sparkles, TrendingUp, Zap, Eye, Bell } from 'lucide-react';
+import { MapPin, MessageCircle, FileText, ShieldCheck, Clock, ArrowRight, Check, Sparkles, TrendingUp, Zap, Eye, Bell, BarChart2, CheckCircle2 } from 'lucide-react';
 import { T } from '@/lib/constants/mock-data';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -131,8 +131,12 @@ export default function LandingPage() {
   const [heroCluster, setHeroCluster] = useState<{ confidence: number } | null>(null);
   const [clustersLoading, setClustersLoading] = useState(true);
   const [activeStat, setActiveStat] = useState(0);
+
+  // Waitlist state
   const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false);
+  const [waitlistRole, setWaitlistRole] = useState<'BUSINESS_OWNER' | 'CLUSTER_OWNER' | null>(null);
+  const [waitlistState, setWaitlistState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [waitlistError, setWaitlistError] = useState('');
 
   const cities = ['Semua Kota', 'Depok', 'Jakarta Selatan', 'Tangerang Selatan', 'Surabaya'];
 
@@ -179,12 +183,34 @@ export default function LandingPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleWaitlist = (e: React.FormEvent) => {
+  const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!waitlistEmail || !waitlistEmail.includes('@')) return;
-    setWaitlistSubmitted(true);
-    setTimeout(() => setWaitlistSubmitted(false), 3000);
-    setWaitlistEmail('');
+    if (!waitlistEmail || !waitlistEmail.includes('@')) {
+      setWaitlistError('Masukkan email yang valid.');
+      return;
+    }
+    if (!waitlistRole) {
+      setWaitlistError('Pilih peranmu terlebih dahulu.');
+      return;
+    }
+    setWaitlistState('loading');
+    setWaitlistError('');
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: waitlistEmail, role: waitlistRole }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || 'Gagal mendaftar.');
+      }
+      setWaitlistState('success');
+      setWaitlistEmail('');
+    } catch (err) {
+      setWaitlistError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
+      setWaitlistState('error');
+    }
   };
 
   const stats = [
@@ -306,8 +332,8 @@ export default function LandingPage() {
             <span style={{ color: T.p600, fontStyle: 'italic' }}>before you</span><br />
             operate.
           </h1>
-          <p style={{ fontSize: 18, color: T.g500, lineHeight: 1.7, margin: '0 0 36px', maxWidth: '48ch' }}>
-            Jangan tebak-tebakan lagi. Validasi konsep F&B kamu dengan data pasar hyperlokal terverifikasi. Jangan biarkan modal habis di lokasi yang salah.
+          <p style={{ fontSize: 18, color: T.g500, lineHeight: 1.7, margin: '0 0 36px', maxWidth: '46ch' }}>
+            Sebelum tanda tangan kontrak sewa ruko, cek dulu datanya. Price ceiling, pola traffic, kompetitor nyata — semua ada di satu laporan.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <Button size="lg" onClick={() => { window.location.href = '/clusters'; }} icon={<MapPin size={18} color={T.c50} />}>
@@ -410,14 +436,14 @@ export default function LandingPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px 40px', alignItems: 'start', marginBottom: 80 }}>
             <div>
               <blockquote style={{
-                fontSize: 'clamp(20px, 2.4vw, 30px)',
+                fontSize: 'clamp(20px, 2.4vw, 28px)',
                 color: 'rgba(253,251,247,0.92)',
-                lineHeight: 1.55,
+                lineHeight: 1.6,
                 fontStyle: 'italic',
                 margin: 0,
                 fontWeight: 400,
               }}>
-                &ldquo;Paman saya buka cafe matcha premium di Depok dengan harga Rp 50.000, sama dengan Jakarta. Tutup dalam beberapa bulan. Price ceiling Depok adalah Rp 28.000. Tidak ada yang memberitahunya.&rdquo;
+                &ldquo;Pamanku buka kafe matcha di Depok — harga Rp 50.000, sama kayak Jakarta Selatan. Tutup tiga bulan kemudian. Price ceiling Depok cuma Rp 28.000. Nggak ada yang kasih tahu.&rdquo;
               </blockquote>
               <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.35)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 20, height: 1, background: 'rgba(253,251,247,0.2)' }} />
@@ -581,8 +607,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* WAITING LIST SECTION - between clusters and pricing */}
-      <section style={{
+      {/* WAITING LIST SECTION */}
+      <section id="section-waitlist" style={{
         background: T.g900,
         padding: '80px 5%',
         position: 'relative',
@@ -608,17 +634,17 @@ export default function LandingPage() {
               padding: '6px 16px', marginBottom: 20, border: '1px solid rgba(255,255,255,0.08)',
             }}>
               <Bell size={12} color={T.warning} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: T.warning, letterSpacing: '0.06em' }}>WAITING LIST CLUSTER BARU</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: T.warning, letterSpacing: '0.06em' }}>WAITING LIST</span>
             </div>
             <h2 style={{
               fontSize: 'clamp(24px, 3vw, 32px)',
               fontWeight: 700, color: T.c50,
               letterSpacing: '-0.02em', margin: '0 0 12px',
             }}>
-              Kota berikutnya segera hadir
+              Kota berikutnya akan segera buka
             </h2>
-            <p style={{ fontSize: 15, color: 'rgba(253,251,247,0.5)', margin: 0, maxWidth: '48ch', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.7 }}>
-              Daftar waiting list dan dapatkan notifikasi pertama kali cluster di kotamu aktif. Plus, bonus 3 chat gratis saat launch.
+            <p style={{ fontSize: 15, color: 'rgba(253,251,247,0.5)', margin: 0, maxWidth: '46ch', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.7 }}>
+              Daftar lebih dulu — dan kamu dapat notifikasi pertama saat cluster kotamu aktif.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 40 }}>
@@ -679,105 +705,158 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 20,
-            padding: '28px 32px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            flexWrap: 'wrap',
-          }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: T.c50, marginBottom: 4 }}>
-                Jadilah yang pertama tahu
+          {/* Role Selection Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 28, maxWidth: 640, margin: '0 auto 28px' }}>
+            {[
+              {
+                role: 'BUSINESS_OWNER' as const,
+                title: 'Business Owner',
+                desc: 'Kamu mau buka usaha F&B dan butuh data pasar sebelum terjun.',
+                icon: <BarChart2 size={20} />,
+              },
+              {
+                role: 'CLUSTER_OWNER' as const,
+                title: 'Cluster Owner',
+                desc: 'Kamu di lapangan, siap kumpulkan data lokal dan dapat bagian revenue.',
+                icon: <MapPin size={20} />,
+              },
+            ].map(opt => {
+              const selected = waitlistRole === opt.role;
+              return (
+                <button
+                  key={opt.role}
+                  onClick={() => { setWaitlistRole(opt.role); setWaitlistError(''); }}
+                  style={{
+                    background: selected ? 'rgba(95,184,163,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1.5px solid ${selected ? T.p400 : 'rgba(255,255,255,0.07)'}`,
+                    borderRadius: 16,
+                    padding: '20px 18px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 200ms ease',
+                    fontFamily: 'inherit',
+                    opacity: !waitlistRole || selected ? 1 : 0.5,
+                  }}
+                  onMouseEnter={e => {
+                    if (!selected) {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.18)';
+                      (e.currentTarget as HTMLElement).style.opacity = '1';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!selected) {
+                      (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.07)';
+                      (e.currentTarget as HTMLElement).style.opacity = waitlistRole ? '0.5' : '1';
+                    }
+                  }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 12, marginBottom: 12,
+                    background: selected ? `${T.p400}20` : 'rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: selected ? T.p400 : 'rgba(255,255,255,0.35)',
+                    transition: 'all 200ms ease',
+                  }}>
+                    {opt.icon}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: selected ? T.p400 : 'rgba(255,255,255,0.55)', marginBottom: 6 }}>
+                    {opt.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'rgba(253,251,247,0.4)', lineHeight: 1.6 }}>
+                    {opt.desc}
+                  </div>
+                  {selected && (
+                    <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: T.p400 }}>
+                      <Check size={11} />
+                      Dipilih
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Email Form */}
+          {waitlistState === 'success' ? (
+            <div style={{
+              background: 'rgba(95,184,163,0.12)',
+              border: '1px solid rgba(95,184,163,0.3)',
+              borderRadius: 16,
+              padding: '24px 28px',
+              textAlign: 'center',
+              maxWidth: 640,
+              margin: '0 auto',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(95,184,163,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CheckCircle2 size={24} color={T.p400} />
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: 'rgba(253,251,247,0.4)' }}>
-                Masukkan email untuk notifikasi cluster baru
+              <div style={{ fontSize: 15, fontWeight: 700, color: T.c50, marginBottom: 6 }}>Kamu sudah masuk daftar!</div>
+              <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.5)', lineHeight: 1.7 }}>
+                Kami akan kirim notifikasi ke email kamu saat cluster baru aktif.
               </div>
             </div>
-            <form onSubmit={handleWaitlist} style={{ display: 'flex', gap: 10, flex: 2, minWidth: 280 }}>
-              <div style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12,
-                padding: '10px 14px',
-                transition: 'all 200ms ease',
-              }}>
-                <Bell size={16} color="rgba(255,255,255,0.4)" />
-                <input
-                  type="email"
-                  placeholder="email@kamu.com"
-                  value={waitlistEmail}
-                  onChange={e => setWaitlistEmail(e.target.value)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    outline: 'none',
-                    color: T.c50,
-                    fontSize: 14,
-                    fontFamily: 'inherit',
-                    width: '100%',
-                  }}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={waitlistSubmitted}
-                style={{
-                  padding: '10px 24px',
+          ) : (
+            <form onSubmit={handleWaitlist} style={{ maxWidth: 640, margin: '0 auto' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{
+                  flex: 1, minWidth: 220,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${waitlistError ? T.danger + '60' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: 12,
-                  border: 'none',
-                  background: waitlistSubmitted ? T.success : T.p600,
-                  color: T.c50,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                  cursor: waitlistSubmitted ? 'default' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
+                  padding: '11px 14px',
                   transition: 'all 200ms ease',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {waitlistSubmitted ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Tersimpan!
-                  </>
-                ) : (
-                  <>
-                    <Bell size={14} />
-                    Ingatkan Saya
-                  </>
-                )}
-              </button>
+                }}>
+                  <Bell size={16} color="rgba(255,255,255,0.4)" />
+                  <input
+                    type="email"
+                    placeholder="email@kamu.com"
+                    value={waitlistEmail}
+                    onChange={e => { setWaitlistEmail(e.target.value); setWaitlistError(''); }}
+                    disabled={waitlistState === 'loading'}
+                    style={{
+                      background: 'none', border: 'none', outline: 'none',
+                      color: T.c50, fontSize: 14, fontFamily: 'inherit', width: '100%',
+                    }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={waitlistState === 'loading'}
+                  style={{
+                    padding: '11px 24px', borderRadius: 12, border: 'none',
+                    background: T.p600, color: T.c50, fontSize: 14, fontWeight: 600,
+                    fontFamily: 'inherit',
+                    cursor: waitlistState === 'loading' ? 'default' : 'pointer',
+                    opacity: waitlistState === 'loading' ? 0.7 : 1,
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    transition: 'all 200ms ease', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {waitlistState === 'loading' ? (
+                    <><span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'lokal-spin 0.7s linear infinite' }} />Mendaftar...</>
+                  ) : (
+                    <><Bell size={14} />Daftar Sekarang</>
+                  )}
+                </button>
+              </div>
+              {waitlistError && (
+                <div style={{ fontSize: 12, color: `${T.danger}cc`, marginTop: 8, paddingLeft: 4 }}>
+                  {waitlistError}
+                </div>
+              )}
             </form>
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 24,
-            marginTop: 32,
-            flexWrap: 'wrap',
-          }}>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 32, flexWrap: 'wrap' }}>
             {[
-              { text: '5 Kota dalam pipeline' },
-              { text: '2.848 orang dalam waiting list' },
-              { text: 'Data terverifikasi on-chain' },
+              { text: '5 kota dalam pipeline' },
+              { text: '2.848 calon pengguna terdaftar' },
+              { text: 'Data terverifikasi di Solana' },
             ].map((badge, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                fontSize: 12, color: 'rgba(253,251,247,0.35)',
-              }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'rgba(253,251,247,0.35)' }}>
                 <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.p400 }} />
                 {badge.text}
               </div>

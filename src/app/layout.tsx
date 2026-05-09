@@ -18,7 +18,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LOKAL — Simulate Before You Operate',
+  title: 'LOKAL: Simulate Before You Operate',
   description: "Indonesia's F&B Hyperlocal Market Intelligence Platform on Solana. Validate your F&B concept with verified, street-level local data.",
   keywords: ['F&B', 'market intelligence', 'Indonesia', 'Solana', 'hyperlocal'],
 };
