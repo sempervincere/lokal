@@ -214,9 +214,9 @@ export default function LandingPage() {
   };
 
   const stats = [
-    { val: '60-90%', label: 'bisnis F&B gagal di tahun pertama' },
+    { val: '40-70%', label: 'bisnis F&B gagal di tahun ketiga' },
     { val: '4.85 juta', label: 'UMKM F&B beroperasi di Indonesia' },
-    { val: 'Rp 1.25jt', label: 'per jam biaya konsultan F&B' },
+    { val: 'Rp 1.25jt', label: 'per-jam biaya konsultan F&B' },
     { val: 'Rp 400K', label: 'satu sesi simulasi LOKAL' },
   ];
 
@@ -333,7 +333,7 @@ export default function LandingPage() {
             operate.
           </h1>
           <p style={{ fontSize: 18, color: T.g500, lineHeight: 1.7, margin: '0 0 36px', maxWidth: '46ch' }}>
-            Sebelum tanda tangan kontrak sewa ruko, cek dulu datanya. Price ceiling, pola traffic, kompetitor nyata — semua ada di satu laporan.
+            Sebelum membuka bisnis F&B, cek dulu kecocokan konsep bisnis dan akses laporan lengkapnya. Dimulai dari price ceiling, pola traffic, kompetitor semua ada di satu laporan.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             <Button size="lg" onClick={() => { window.location.href = '/clusters'; }} icon={<MapPin size={18} color={T.c50} />}>
@@ -429,7 +429,7 @@ export default function LandingPage() {
           backgroundImage: `radial-gradient(circle at 20% 50%, ${T.p600}08 0%, transparent 50%), radial-gradient(circle at 80% 50%, ${T.e600}06 0%, transparent 50%)`,
         }} />
         <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.p400, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: T.p400, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 24, height: 1, background: T.p400, opacity: 0.5 }} />
             Mengapa LOKAL Ada
           </div>
@@ -443,7 +443,7 @@ export default function LandingPage() {
                 margin: 0,
                 fontWeight: 400,
               }}>
-                &ldquo;Pamanku buka kafe matcha di Depok — harga Rp 50.000, sama kayak Jakarta Selatan. Tutup tiga bulan kemudian. Price ceiling Depok cuma Rp 28.000. Nggak ada yang kasih tahu.&rdquo;
+                &ldquo;Pamanku buka kafe matcha di Depok harga Rp 53.000, sama kayak di Jakarta. Dan sedihnya cafe itu tutup di bulan ke-8. Padahal price ceiling Depok itu Rp 28.000. Tapi pamanku ga tau akan hal itu....&rdquo;
               </blockquote>
               <div style={{ fontSize: 13, color: 'rgba(253,251,247,0.35)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 20, height: 1, background: 'rgba(253,251,247,0.2)' }} />
@@ -452,7 +452,7 @@ export default function LandingPage() {
             </div>
             <div style={{ paddingTop: 8 }}>
               <p style={{ fontSize: 16, color: 'rgba(253,251,247,0.55)', lineHeight: 1.75, margin: 0 }}>
-                Kebanyakan pengusaha F&B baru memulai dengan <strong style={{ color: 'rgba(253,251,247,0.85)' }}>intuisi</strong>, bukan data. Mereka tidak tahu price ceiling lokal, pola traffic, atau siapa kompetitor sesungguhnya. Baru sadar setelah terlambat.
+                Kebanyakan pengusaha F&B baru memulai dengan <strong style={{ color: 'rgba(253,251,247,0.85)' }}>intuisi</strong>, bukan data. Mereka tidak tahu price ceiling , pola traffic, atau siapa kompetitor sesungguhnya. Jangan sampai baru sadar saat semua sudah terlambat.
               </p>
               <div style={{ marginTop: 24, display: 'flex', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.p400, fontWeight: 600 }}>
@@ -521,8 +521,8 @@ export default function LandingPage() {
           }} />
           {[
             { n: '01', icon: <MapPin size={22} color={T.p600} />, t: 'Pilih Cluster', d: 'Temukan koridor 1.5km yang relevan dengan lokasi target kamu. Setiap cluster punya 34+ titik data terverifikasi.' },
-            { n: '02', icon: <MessageCircle size={22} color={T.p600} />, t: 'Chat Gratis 7 Pesan', d: 'Tanya langsung ke AI konsultan tentang harga, kompetitor, dan perilaku pasar lokal. Tanpa biaya.' },
-            { n: '03', icon: <FileText size={22} color={T.p600} />, t: 'Buka Laporan Lengkap', d: 'Bayar Rp 400K untuk simulasi 10-seksi + jendela konsultasi AI 12 jam. Unduh PDF kapan saja.' },
+            { n: '02', icon: <MessageCircle size={22} color={T.p600} />, t: 'Chat Gratis dengan 7 pesan GRATIS', d: 'Tanya langsung ke AI konsultan tentang harga, kompetitor, dan perilaku pasar lokal. Tanpa biaya.' },
+            { n: '03', icon: <FileText size={22} color={T.p600} />, t: 'Buka Laporan Lengkap', d: 'Bayar Rp 400K untuk simulasi laporan lengkap + jendela konsultasi AI 12 jam dengan data Hyperlocal"' },
           ].map((s, i) => (
             <div key={i} style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
               <div style={{
@@ -641,10 +641,10 @@ export default function LandingPage() {
               fontWeight: 700, color: T.c50,
               letterSpacing: '-0.02em', margin: '0 0 12px',
             }}>
-              Kota berikutnya akan segera buka
+              Kota berikutnya akan segera tiba
             </h2>
             <p style={{ fontSize: 15, color: 'rgba(253,251,247,0.5)', margin: 0, maxWidth: '46ch', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.7 }}>
-              Daftar lebih dulu — dan kamu dapat notifikasi pertama saat cluster kotamu aktif.
+              Daftar dan kamu akan mendapat notifikasi pertama saat cluster di kotamu aktif.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12, marginBottom: 40 }}>
@@ -711,13 +711,13 @@ export default function LandingPage() {
               {
                 role: 'BUSINESS_OWNER' as const,
                 title: 'Business Owner',
-                desc: 'Kamu mau buka usaha F&B dan butuh data pasar sebelum terjun.',
+                desc: 'Untuk kamu mau buka usaha F&B dan butuh data pasar sebelum terjun.',
                 icon: <BarChart2 size={20} />,
               },
               {
                 role: 'CLUSTER_OWNER' as const,
                 title: 'Cluster Owner',
-                desc: 'Kamu di lapangan, siap kumpulkan data lokal dan dapat bagian revenue.',
+                desc: 'Untuk kamu di lapangan, siap kumpulkan data lokal dan dapat bagian revenue.',
                 icon: <MapPin size={20} />,
               },
             ].map(opt => {
