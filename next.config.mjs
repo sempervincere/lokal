@@ -5,6 +5,8 @@ const bufferPath = _require.resolve('buffer/');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Node-only packages used in server-side API routes — skip webpack bundling.
+  serverExternalPackages: ['@anchor-lang/core', '@anchor-lang/borsh', '@anchor-lang/errors'],
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       // resolve.alias works for BOTH CJS and ESM imports — resolve.fallback
