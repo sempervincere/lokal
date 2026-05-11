@@ -14,7 +14,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { createTransferCheckedInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  createTransferCheckedInstruction,
+  getAssociatedTokenAddressSync,
+  getAccount,
+  createAssociatedTokenAccountIdempotentInstruction,
+  TokenAccountNotFoundError,
+} from "@solana/spl-token";
 import { IDRX_DECIMALS } from "@/lib/constants/pricing";
 
 const WITHDRAWAL_FEE_RATE = 0.02; // 2% platform fee
@@ -98,6 +104,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Fix 4: Optimistic lock — atomically mark THIS snapshot as paid before TX ──
+    // If a concurrent withdrawal already locked these records, updateMany returns count=0.
+    const earningIds = unpaidEarnings.map((e) => e.id);
+    const paidAt = new Date();
+    const lockResult = await prisma.coEarning.updateMany({
+      where: { id: { in: earningIds }, isPaid: false },
+      data: { isPaid: true, paidAt },
+    });
+
+    if (lockResult.count === 0) {
+      return NextResponse.json(
+        { error: "WITHDRAWAL_IN_PROGRESS", message: "Another withdrawal is already in progress. Please wait." },
+        { status: 409 }
+      );
+    }
+
     // Calculate platform fee and net amount
     const feeAmount = Math.floor(totalEarnings * WITHDRAWAL_FEE_RATE);
     const netAmount = totalEarnings - feeAmount;
@@ -119,50 +141,76 @@ export async function POST(request: NextRequest) {
     // Check platform balance
     const platformBalance = await connection.getTokenAccountBalance(platformAta);
     const platformBalanceBaseUnits = parseInt(platformBalance.value.amount);
-    const withdrawalBaseUnits = netAmount * Math.pow(10, IDRX_DECIMALS);
+    const withdrawalBaseUnits = Math.floor(netAmount * Math.pow(10, IDRX_DECIMALS));
 
     if (platformBalanceBaseUnits < withdrawalBaseUnits) {
+      // Rollback lock before returning error
+      await prisma.coEarning.updateMany({
+        where: { id: { in: earningIds } },
+        data: { isPaid: false, paidAt: null },
+      });
       return NextResponse.json(
         { error: "INSUFFICIENT_FUNDS", message: "Platform has insufficient balance" },
         { status: 400 }
       );
     }
 
-    // Create transfer instruction (net amount after fee)
-    const transferIx = createTransferCheckedInstruction(
-      platformAta,
-      idrxMint,
-      respondentAta,
-      platformWallet.publicKey,
-      withdrawalBaseUnits,
-      IDRX_DECIMALS
-    );
-
-    // Build and send transaction
+    // ── Fix 5: Ensure recipient ATA exists before transfer ──
     const { Transaction, sendAndConfirmTransaction } = await import("@solana/web3.js");
-    const transaction = new Transaction().add(transferIx);
+    const transaction = new Transaction();
 
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      transaction,
-      [platformWallet],
-      { commitment: "confirmed" }
+    try {
+      await getAccount(connection, respondentAta);
+    } catch (err) {
+      if (err instanceof TokenAccountNotFoundError) {
+        // ATA doesn't exist — platform wallet creates it (pays ~0.002 SOL rent)
+        transaction.add(
+          createAssociatedTokenAccountIdempotentInstruction(
+            platformWallet.publicKey,
+            respondentAta,
+            walletPubkey,
+            idrxMint,
+          )
+        );
+      } else {
+        // Rollback lock on unexpected RPC error
+        await prisma.coEarning.updateMany({
+          where: { id: { in: earningIds } },
+          data: { isPaid: false, paidAt: null },
+        });
+        throw err;
+      }
+    }
+
+    transaction.add(
+      createTransferCheckedInstruction(
+        platformAta,
+        idrxMint,
+        respondentAta,
+        platformWallet.publicKey,
+        BigInt(withdrawalBaseUnits),
+        IDRX_DECIMALS,
+      )
     );
 
-    // Update earnings as paid in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Mark all unpaid earnings as paid
-      await tx.coEarning.updateMany({
-        where: {
-          coId: co.id,
-          isPaid: false,
-        },
-        data: {
-          isPaid: true,
-          paidAt: new Date(),
-        },
+    let signature: string;
+    try {
+      signature = await sendAndConfirmTransaction(
+        connection,
+        transaction,
+        [platformWallet],
+        { commitment: "confirmed" }
+      );
+    } catch (solanaError) {
+      // Solana TX failed — rollback the optimistic lock so CO can retry
+      await prisma.coEarning.updateMany({
+        where: { id: { in: earningIds } },
+        data: { isPaid: false, paidAt: null },
       });
-    });
+      throw solanaError;
+    }
+
+    // Earnings already marked paid before TX — nothing more to update in DB
 
     return NextResponse.json({
       ok: true,

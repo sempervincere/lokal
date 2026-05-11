@@ -1,78 +1,102 @@
 # LOKAL
 
-Data lapangan F&B, terverifikasi blockchain, untuk pengusaha yang tidak mau rugi modal di lokasi yang salah.
+> Hyperlocal F&B market intelligence — verified on Solana, powered by AI.
+
+LOKAL solves a real problem: F&B entrepreneurs in Indonesia lose capital opening in the wrong location because they lack reliable local data. LOKAL fixes this by deploying on-the-ground data collectors who anchor verified market data on Solana, making it tamper-proof and queryable via AI.
+
+Built for [Colosseum Frontier Hackathon 2025](https://colosseum.org).
 
 ---
 
-## Apa ini?
+## How It Works
 
-LOKAL adalah platform intelijen pasar hyperlokal untuk industri F&B Indonesia. Sebelum buka warung, kafe, atau resto baru — kamu bisa cek dulu: price ceiling di kawasan itu berapa? Kompetitor sudah ada berapa? Trafficnya seperti apa?
+**Business Owner (BO)** — wants to open an F&B outlet. Pays per AI consultation session (in IDRX) to ask specific questions: *"What's the price ceiling for coffee in this area? How many competitors? What's the foot traffic like?"*
 
-Data dikumpulkan langsung dari lapangan oleh Cluster Owner (CO), disimpan on-chain di Solana, dan bisa diakses lewat AI consultant yang bisa jawab pertanyaan spesifik soal bisnismu.
+**Cluster Owner (CO)** — boots on the ground. Collects field data (prices, traffic, competitors) in a designated area, submits to the platform, earns a share of IDRX revenue each time their data is consumed.
 
-Dibangun untuk [Colosseum Frontier Hackathon 2025](https://colosseum.org).
-
----
-
-## Siapa penggunanya?
-
-**Business Owner (BO)** — orang yang mau buka usaha F&B. Mereka bayar per sesi untuk konsultasi AI dengan data lokal yang terverifikasi.
-
-**Cluster Owner (CO)** — orang di lapangan. Mereka kumpulkan data harga, traffic, dan kompetitor di kawasan tertentu, submit ke blockchain, dan dapat bagian revenue setiap kali data mereka dipakai.
+**On-chain verification** — each field data entry is SHA-256 hashed and anchored to Solana via a Memo instruction. Immutable proof that data existed and was verified at a specific timestamp. CO credentials are minted as soulbound NFTs (Metaplex Core) — non-transferable, revocable by platform only.
 
 ---
 
-## Stack Teknis
+## Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19 |
-| Styling | Vanilla CSS-in-JS (no Tailwind) |
+| Frontend | Next.js 14 (App Router), React 18 |
+| Styling | Tailwind CSS |
 | Database | PostgreSQL via Supabase |
-| ORM | Prisma v7 dengan driver adapter PrismaPg |
-| Auth | Supabase Auth (Email + Google OAuth) |
+| ORM | Prisma v7 with PrismaPg adapter |
+| Auth | Supabase Auth (Email + Google OAuth + Wallet) |
 | Blockchain | Solana Devnet via Helius RPC |
-| Program | Anchor 0.30+ (Rust, field verification on-chain) |
+| On-chain Program | Anchor 0.30+ (Rust) — field hash anchoring |
 | NFT | Metaplex Core (soulbound CO credential) |
-| Token | IDRX (SPL token, 6 decimals) |
-| AI | Groq / Llama-4 Scout |
+| Payment Token | IDRX (SPL token, Indonesian Rupiah stablecoin, 6 decimals) |
+| AI | Anthropic Claude (streaming) |
+| Webhooks | Helius — detects IDRX payments on-chain, unlocks sessions |
 
 ---
 
-## Struktur Project
+## On-Chain Program
+
+**Program ID:** `4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ` (Solana Devnet)
+
+Two instructions:
+
+| Instruction | What it does |
+|---|---|
+| `initialize_cluster` | Creates a PDA-based `ClusterRecord` account for a geographic cluster |
+| `anchor_field_hash` | Writes `LOKAL\|<slug>\|<field_code>\|<sha256>\|<timestamp>` into a Memo instruction — immutable on-chain proof |
+
+The program verifies the caller is the cluster authority before anchoring. Each anchoring increments a `validated_field_count` on the cluster account.
+
+---
+
+## Project Structure
 
 ```
 LOKAL/
-├── anchor/                 # On-chain Anchor program (Rust)
+├── anchor/                          # Anchor program (Rust)
+│   └── programs/lokal-core/src/
+│       ├── lib.rs                   # Program entrypoint, declare_id!
+│       ├── state.rs                 # ClusterRecord account schema
+│       ├── instructions/
+│       │   ├── initialize_cluster.rs
+│       │   └── anchor_field_hash.rs
+│       └── error.rs
 ├── prisma/
-│   ├── schema.prisma       # Database schema — source of truth
-│   └── seed.ts             # Base seed data
+│   ├── schema.prisma                # Database schema (source of truth)
+│   └── seed.ts
 ├── scripts/
-│   ├── seed-margonda.ts    # Seeds Margonda cluster data
-│   ├── clear-user-sessions.ts
-│   └── mint-co-nft.ts      # Mints CO credential NFT
+│   ├── seed-margonda.ts             # Seeds Margonda cluster (idempotent)
+│   ├── seed-bsd-serpong.ts          # Seeds BSD Serpong cluster
+│   ├── mint-co-nft.ts               # Mints CO soulbound credential NFT
+│   └── mint-demo-co.ts
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/         # Login, register, callback
-│   │   ├── (co)/co/        # Cluster Owner dashboard
-│   │   ├── (public)/       # Landing page
-│   │   ├── admin/          # Admin panel
-│   │   └── api/            # All API routes
-│   ├── components/
+│   │   ├── (auth)/                  # Login, register, OAuth callback
+│   │   ├── (co)/co/                 # Cluster Owner dashboard
+│   │   ├── (public)/                # Landing page
+│   │   ├── admin/                   # Admin panel
+│   │   └── api/                     # All API routes
 │   ├── lib/
-│   │   ├── prisma.ts       # Singleton Prisma client
-│   │   ├── solana/         # Anchor client, IDRX transfer, NFT mint
-│   │   └── supabase/       # Client + server helpers
-│   └── middleware.ts       # Session refresh + route protection
-├── prisma.config.ts        # Prisma v7 config with PrismaPg adapter
-└── .env.local              # Local env (never committed)
+│   │   ├── prisma.ts                # Singleton Prisma client
+│   │   ├── solana/                  # Anchor client, IDRX transfer, NFT mint
+│   │   └── supabase/                # Server + client helpers
+│   └── middleware.ts                # Session refresh + route protection
+└── docs/                            # PRD, TDD, setup guide
 ```
 
 ---
 
-## Setup Lokal
+## Local Development
 
-### 1. Clone dan install
+### Prerequisites
+- Node.js 18+
+- PostgreSQL (via Supabase or local)
+- Solana CLI + Anchor 0.30+
+- A Helius account (free tier works)
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/your-username/lokal.git
@@ -86,7 +110,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Isi semua variabel yang ada di `.env.example`. Variabel wajib:
+Required variables:
 
 ```env
 # Supabase
@@ -95,110 +119,132 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
 DIRECT_URL=
-SUPABASE_SESSION_URL=
 
-# Helius (Solana RPC)
-NEXT_PUBLIC_HELIUS_RPC_URL=
+# Helius (Solana RPC + Webhooks)
 HELIUS_RPC_URL=
+NEXT_PUBLIC_HELIUS_RPC_URL=
+HELIUS_API_KEY=
 HELIUS_WEBHOOK_SECRET=
 
-# IDRX Token
+# IDRX Token + Platform Wallet
 NEXT_PUBLIC_IDRX_MINT_ADDRESS=
+IDRX_MINT_ADDRESS=
 NEXT_PUBLIC_PLATFORM_WALLET=
-PLATFORM_KEYPAIR=    # JSON array — platform wallet secret key
+PLATFORM_KEYPAIR=    # JSON array of secret key bytes — server-side only
+
+# Program
+NEXT_PUBLIC_LOKAL_CORE_PROGRAM_ID=4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# AI
+ANTHROPIC_API_KEY=
 ```
 
-### 3. Push schema ke database
+### 3. Push database schema
 
 ```bash
-# Di WSL
 npx tsx node_modules/.bin/prisma db push --config prisma.config.ts
 ```
 
-### 4. Seed data Margonda
+### 4. Seed cluster data
 
 ```bash
 npx tsx scripts/seed-margonda.ts
+npx tsx scripts/seed-bsd-serpong.ts
 ```
 
-### 5. Jalankan dev server
+### 5. Run dev server
 
 ```bash
 npm run dev
 ```
 
-Buka `http://localhost:3000`.
+Open `http://localhost:3000`.
 
 ---
 
 ## Scripts
 
-| Command | Fungsi |
+| Command | Purpose |
 |---|---|
-| `npx tsx scripts/seed-margonda.ts` | Seed data cluster Margonda (idempotent, aman dijalankan ulang) |
-| `npx tsx scripts/clear-user-sessions.ts` | Hapus semua sesi user tertentu tanpa hapus akun |
-| `CO_NAME="..." CO_WALLET="..." npx tsx scripts/mint-co-nft.ts` | Mint NFT credential untuk CO |
+| `npx tsx scripts/seed-margonda.ts` | Seed Margonda Depok cluster (idempotent) |
+| `npx tsx scripts/seed-bsd-serpong.ts` | Seed BSD Serpong cluster |
+| `npx tsx scripts/mint-co-nft.ts` | Mint soulbound NFT credential for a CO |
+| `npx tsx scripts/clear-user-sessions.ts` | Clear all sessions for a specific user |
+| `npx tsx scripts/verify-state.ts` | Verify on-chain cluster state |
 
 ---
 
 ## API Routes
 
-| Route | Method | Auth | Fungsi |
+| Route | Method | Auth | Purpose |
 |---|---|---|---|
-| `/api/clusters` | GET | Public | Daftar cluster aktif |
-| `/api/waitlist` | POST | Public | Daftar waitlist |
-| `/api/sessions` | POST | BO | Buat sesi konsultasi baru |
-| `/api/chat` | POST | BO | Kirim pesan AI |
-| `/api/co/earnings` | GET | CO | Riwayat dan total pendapatan |
-| `/api/co/withdraw` | POST | CO | Tarik IDRX ke wallet |
-| `/api/co/fields` | GET/POST | CO | Data field cluster |
-| `/api/webhooks/helius` | POST | Signed | Konfirmasi pembayaran IDRX |
-| `/api/admin/users` | GET | Admin | Manajemen pengguna |
+| `/api/clusters` | GET | Public | List active clusters |
+| `/api/waitlist` | POST | Public | Join waitlist |
+| `/api/sessions` | POST | BO | Create a new paid consultation session |
+| `/api/chat` | POST | BO | Free AI chat (up to 7 messages) |
+| `/api/chat/paid` | POST | BO | Paid session AI chat (streaming) |
+| `/api/co/earnings` | GET | CO | Earnings history and total |
+| `/api/co/withdraw` | POST | CO | Withdraw IDRX to wallet (2% platform fee) |
+| `/api/co/fields` | GET/POST | CO | Submit and view field data |
+| `/api/webhooks/helius` | POST | HMAC | Confirm IDRX payment, unlock session |
+| `/api/admin/users` | GET | Admin | User management |
+| `/api/admin/clusters` | GET/POST | Admin | Cluster management |
 
 ---
 
-## Model Database Utama
+## Database Model
 
 ```
-User → Session → Message
-           └──→ Report
-           └──→ ConceptForm
+User ──→ Session ──→ Message
+                └──→ Report
+                └──→ ConceptForm
 
-User → ClusterOwner → Cluster → ClusterFieldValue
-                  └──→ CoEarning
+User ──→ ClusterOwner ──→ Cluster ──→ ClusterFieldValue
+                     └──→ CoEarning
 
-WaitlistSubmission (standalone, no FK)
+WaitlistSubmission (standalone)
 ```
 
 ---
 
-## Deployment ke Vercel
+## Payment Flow
 
-1. Push ke GitHub
-2. Import project di [vercel.com](https://vercel.com)
-3. Tambahkan semua env vars di Vercel → Settings → Environment Variables
-4. Update Supabase Site URL ke URL Vercel
-5. Update Google OAuth redirect URI ke `https://your-project.supabase.co/auth/v1/callback`
-6. Update Helius webhook URL ke `https://your-project.vercel.app/api/webhooks/helius`
-
----
-
-## Keamanan
-
-- Webhook Helius divalidasi dengan `crypto.timingSafeEqual` (tahan timing attack)
-- `PLATFORM_KEYPAIR` hanya diakses server-side, tidak pernah dikirim ke client
-- Semua route CO dan admin diproteksi oleh middleware + role check di API level
-- Waitlist API idempotent — email yang sama tidak akan dobel insert
+1. BO selects cluster → creates session via `/api/sessions` → receives IDRX transfer address
+2. BO sends IDRX from their wallet to platform wallet
+3. Helius webhook fires → `/api/webhooks/helius` validates with `timingSafeEqual` → marks session as `PAYMENT_CONFIRMED`
+4. BO can now use paid AI chat
+5. CO earns a share → withdraws via `/api/co/withdraw` (2% platform fee, minimum 10,000 IDRX)
 
 ---
 
-## Lisensi
+## Deployment (Vercel)
 
-MIT — bebas dipakai, dimodifikasi, dan didistribusikan.
+1. Push to GitHub
+2. Import project at [vercel.com](https://vercel.com)
+3. Add all env vars under Settings → Environment Variables
+4. Update Supabase Site URL to your Vercel domain
+5. Update Google OAuth redirect URI: `https://your-project.supabase.co/auth/v1/callback`
+6. Update Helius webhook URL: `https://your-vercel-app.vercel.app/api/webhooks/helius?secret=YOUR_SECRET`
 
 ---
 
-Dibangun dengan serius oleh tim LOKAL untuk Superteam Indonesia · Frontier Colosseum 2025.
+## Security
+
+- Helius webhook validated with `crypto.timingSafeEqual` (timing-attack resistant)
+- `PLATFORM_KEYPAIR` is server-side only — never exposed to client
+- All CO and admin routes double-protected: middleware redirect + role check in each handler
+- Withdrawal marks specific earning IDs as paid to prevent double-spend on concurrent requests
+- Replay protection on webhooks: signature checked against existing sessions before processing
+
+---
+
+## License
+
+MIT — free to use, modify, and distribute.
+
+---
+
+Built for Superteam Indonesia · Frontier Colosseum 2025.

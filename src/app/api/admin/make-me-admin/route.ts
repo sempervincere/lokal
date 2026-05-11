@@ -2,7 +2,7 @@
  * POST /api/admin/make-me-admin
  *
  * ONE-TIME UTILITY: Promotes the currently logged-in user to ADMIN.
- * Call this once after logging in, then refresh the admin page.
+ * Restricted to allowlisted emails — not open to arbitrary users.
  *
  * This updates BOTH:
  * 1. Supabase Auth user_metadata.role = "ADMIN"
@@ -15,6 +15,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+// Only these emails can use this bootstrap endpoint
+const ADMIN_ALLOWLIST = [
+  "dylansius.putra@gmail.com",
+  "hibahdiskominfo@gmail.com",
+];
+
 export async function POST() {
   const supabase = await createClient();
   const {
@@ -26,6 +32,14 @@ export async function POST() {
     return NextResponse.json(
       { error: "UNAUTHORIZED", message: "You must be logged in first" },
       { status: 401 },
+    );
+  }
+
+  // Guard: only allowlisted emails can self-promote
+  if (!user.email || !ADMIN_ALLOWLIST.includes(user.email.toLowerCase())) {
+    return NextResponse.json(
+      { error: "FORBIDDEN", message: "Not authorized to use this endpoint" },
+      { status: 403 },
     );
   }
 

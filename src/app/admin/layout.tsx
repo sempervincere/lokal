@@ -54,7 +54,7 @@ const NAV_ITEMS = [
 // TEMPORARY: Set to true to bypass admin role check for UI preview.
 // Set to false before production / demo day.
 // ═══════════════════════════════════════════════════════════════════════════════
-const PREVIEW_MODE = true;
+const PREVIEW_MODE = false;
 
 export default function AdminLayout({
   children,
