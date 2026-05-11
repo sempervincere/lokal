@@ -8,7 +8,7 @@
  */
 import * as anchor from '@anchor-lang/core';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
-import idl from '../../../anchor/target/idl/lokal_core.json';
+import idl from './idl/lokal_core.json';
 
 const PROGRAM_ID = new PublicKey('4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ');
 const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');

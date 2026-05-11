@@ -1,0 +1,193 @@
+{
+  "address": "4F2xbVhpy1idLj5FDdKPpRW1t7shYd21okXCSwyaxmoQ",
+  "metadata": {
+    "name": "lokal_core",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "anchor_field_hash",
+      "discriminator": [
+        35,
+        139,
+        90,
+        166,
+        2,
+        35,
+        191,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "cluster_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  117,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "slug"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "name": "field_code",
+          "type": "string"
+        },
+        {
+          "name": "field_hash",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize_cluster",
+      "discriminator": [
+        199,
+        207,
+        31,
+        47,
+        40,
+        180,
+        220,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "cluster_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  117,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "slug"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "ClusterRecord",
+      "discriminator": [
+        82,
+        199,
+        113,
+        177,
+        25,
+        241,
+        140,
+        10
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Only the cluster authority can anchor field hashes"
+    },
+    {
+      "code": 6001,
+      "name": "SlugTooLong",
+      "msg": "Slug exceeds maximum length"
+    },
+    {
+      "code": 6002,
+      "name": "FieldCodeTooLong",
+      "msg": "Field code exceeds maximum length"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidFieldHash",
+      "msg": "Field hash must be a 64-character SHA-256 hex string"
+    }
+  ],
+  "types": [
+    {
+      "name": "ClusterRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "cluster_slug",
+            "type": "string"
+          },
+          {
+            "name": "cluster_name",
+            "type": "string"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "validated_field_count",
+            "type": "u32"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}
